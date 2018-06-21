@@ -97,6 +97,9 @@ class Obb {
                 $eval_incident->fixed += 1;
             }
             $eval_incident->types[(string)$item->type] += 1;
+            if(NULL == $item->fixeddate){
+                continue;
+            }
             #requires date.timezone in php.ini to be set
             try{
                 $fixed =  new DateTime($item->fixeddate);
@@ -104,7 +107,7 @@ class Obb {
                 $time += $fixed->diff($report)->format("%d");
             }catch(Exception $e){
                 echo $e;
-                exit();
+                continue;
             }
         }
         #TODO cut to 2 decimals OR save time as days:minutes:seconds?
@@ -112,7 +115,4 @@ class Obb {
         return $eval_incident;
     }
 }
-
-$obb = new Obb();
-$obb->report($argv[1]);
 ?>
