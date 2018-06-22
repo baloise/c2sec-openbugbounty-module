@@ -1,8 +1,8 @@
-# Openbugbounty Module 
+# Openbugbounty Module
 
-## Overview:  
+## Overview:
 
-This PHP-module retrieves, processes and formats data from https://openbugbounty.org/api. 
+This PHP-module retrieves, processes and formats data from https://openbugbounty.org/api.
 It generates a short report about all incidents regarding a given domain.
 The report includes:
 
@@ -11,15 +11,16 @@ The report includes:
 * average time it took to fix the vulnerabilities
 * types and prevalence of vulnerabilities
 
-Not implemented yet!
-In near future it should provide additional methods and return all data in JSON. 
 
 ## Usage:
 
 ```
 require 'obb.php';
 
-$obb = new Obb();
-$obb->report('mydomain.com');
+$obb = new Obb\Obb();
+echo $obb->report('mydomain.com');
 ```
-
+Result:
+```
+{total":13,"fixed":1,"average_time":42297774,"percent_fixed":0.076923076923077,"types":{"REDIRECT":13}}
+```
