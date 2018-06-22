@@ -25,7 +25,7 @@ function error($msg){
     return json_encode(array(ERROR=>$msg));
 }
 
-class EvalIncidents {
+class DomainData {
     /*
      "Struct" for accumulated data for the domain
 
@@ -53,7 +53,7 @@ class Obb {
     #URL for bugbounty API. Returns all incidents for a specific domain
     private $base_url = 'https://www.openbugbounty.org/api/1/search/?domain=';
     #XML childnodes that are relevant. array is used to check the response in case the API was changed.
-    private $list_values = ['url','type','reporteddate','fixed','fixeddate'];
+    private $list_values = ['host','url','type','reporteddate','fixed','fixeddate'];
 
     public function report($domain){
         /*
@@ -74,9 +74,9 @@ class Obb {
         if(NULL != json_decode($xml)){ 
             return $xml;
         }
-        $eval_incidents = $this->process_incidents($xml);
+        $domain_data = $this->process_incidents($xml);
         #TODO: urls / hostname should not be put into another associative array
-        $final_result = json_encode($eval_incidents);
+        $final_result = json_encode($domain_data);
         if(!$final_result){
             return error("Could not encode the result");
         }
@@ -86,9 +86,9 @@ class Obb {
     private function process_incidents($xml){
         /*
          processes XML data from openbugbounty.
-         Creates and returns an instance of EvalIncidents
+         Creates and returns an instance of DomainData
          */
-        $eval_incidents = new EvalIncidents();
+        $domain_data = new DomainData();
         $time = 0;
 
         foreach($xml->children() as $item){
@@ -99,13 +99,13 @@ class Obb {
                     return error("XML Node " . $entry . " is missing.");
                 }
             }
-            array_push($eval_incidents->reports,$item->url);
-            $eval_incidents->total += 1;
+            array_push($domain_data->reports,(string)$item->url);
+            $domain_data->total += 1;
 
             if(1 == $item->fixed){
-                $eval_incidents->fixed += 1;
+                $domain_data->fixed += 1;
             }
-            $eval_incidents->types[(string)$item->type] += 1;
+            $domain_data->types[(string)$item->type] += 1;
             if(NULL == $item->fixeddate){
                 continue;
             }
@@ -120,10 +120,10 @@ class Obb {
             }
         }
         #Takes name from the first one
-        $eval_incidents->host = $xml->children()[0]->host;
-        $eval_incidents->percent_fixed = $eval_incidents->fixed / $eval_incidents->total;
-        $eval_incidents->average_time = $time / $eval_incidents->total;
-        return $eval_incidents;
+        $domain_data->host = (string)$xml->children()[0]->host;
+        $domain_data->percent_fixed = $domain_data->fixed / $domain_data->total;
+        $domain_data->average_time = $time / $domain_data->total;
+        return $domain_data;
     }
 
     private function get_response($url){
@@ -153,7 +153,7 @@ class Obb {
     #Will be integrated in the report later on.
     private function get_all_domains(){
         /*
-            Returns a list von EvalIncidents Objects, each for a different domain.
+            Returns a list von DomainData Objects, each for a different domain.
 
             TODO: get a list of all domains (ca. 180.000) / or all incidents (ca 230.000) OR iterate through all incidents§
         */
