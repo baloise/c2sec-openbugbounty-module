@@ -42,17 +42,13 @@ class Obb {
 
         $url = $this->base_url . $domain;
         $xml = $this->get_response($url);
-        #Error is encoded in json, so we just need to know if we can decode it.
-        if(NULL != json_decode($xml)){ 
-            return $xml;
-        }
         $domain_data = $this->process_incidents($xml);
         if($obj){
             return $domain_data;
         }
         $final_result = json_encode($domain_data);
         if(!$final_result){
-            return error("Could not encode the result");
+            throw new EncodingException("Could not encode the result");
         }
         return $final_result;
     }
@@ -61,17 +57,17 @@ class Obb {
         /*
          processes XML data from openbugbounty.
          Creates and returns an instance of DomainData
+         Throws XMLFormatException if the data cannot be processed / the API changed
          */
-        $domain_data = new DomainData($xml->children()[0]->host) or die("XML Node 'host' is missing");
+        if(!isset($xml->children()[0]->host)){
+            throw new XMLFormatException('host');
+        }
+        $domain_data = new DomainData($xml->children()[0]->host);
 
         foreach($xml->children() as $item){
-            #check format
             $domain_data->add($item); 
         }
-        $final = $domain_data->sumUp();
-        if(NULL != json_decode($final)){
-            return $final;
-        }
+        $domain_data->sumUp();
         return $domain_data;
     }
 
@@ -87,14 +83,14 @@ class Obb {
         $status = curl_getinfo($curl);
         curl_close($curl);
         if(200 != $status["http_code"]){
-            return error("Could not connect to openbugbounty.org " . $status["http_code"]);
+            throw new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]);
         }
         if(0 == strlen($res)){
-            return error("Empty response");
+            throw new NoResultException("Empty response");
         }
         $xml = simplexml_load_string($res);
         if(NULL == $xml || 0 == count($xml->children())){
-            return error("The search gave no result");
+            throw new NoResultException("The search gave no result");
         }
         return $xml;
     }
@@ -109,15 +105,15 @@ class Obb {
             return $latest_reports;
         } 
         if(!isset($latest_reports->children()[0]->url)){
-            return error("XML Node 'url' is missing");
+            throw new XMLFormatException("XML Node 'url' is missing");
         }
         $latest_url = preg_split("/\//",$latest_reports->children()[0]->url);
         if(sizeof($latest_url) != URL_SPLIT_LENGTH){
-            return error("URL format seems to be false." . $latest_reports->children()[0]->url);
+            throw new FormatException("URL format seems to be false." . $latest_reports->children()[0]->url);
         }
         $latest_id = $latest_url[sizeof($latest_url)-2];
         if(!is_numeric($latest_id)){
-            return error("URL format seems to be false, ID is not a number" . $latest_id);
+            throw new FormatException("URL format seems to be false, ID is not a number" . $latest_id);
         }
         return $latest_id;
     }
@@ -134,9 +130,9 @@ class Obb {
         $latest_id = $this->get_latest_reportID();
         for(;$counter < $latest_id;$counter++){
             sleep(1);  #for safety
-            $res = $this->get_response($this->id_url . $counter);
-            #TODO: Find better way to deal with Error messages. 
-            if(NULL != json_decode($res)){
+            try{
+                $res = $this->get_response($this->id_url . $counter);
+            }catch (NoResultException $e){
                 continue;
             }
             $host = (string)$res->children()[0]->host;

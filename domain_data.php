@@ -44,7 +44,7 @@ class DomainData {
         */
         foreach($this->list_values as $entry){
             if(!isset($item->$entry)){
-                return error("XML Node " . $entry . " is missing.");
+                throw new XMLFormatException($entry);
             }
         }
     }
@@ -53,10 +53,7 @@ class DomainData {
         /*
             Adds new incident to the object.
         */         
-        $test = $this->validate($item);
-        if(NULL != json_decode($test)){
-            return $test;
-        }
+        $this->validate($item);
 
         array_push($this->reports,(string)$item->url);
         $this->total += 1;
@@ -69,22 +66,18 @@ class DomainData {
             return;
         }
         #requires date.timezone in php.ini to be set
-        try{
-            $fixed =  new \DateTime($item->fixeddate);
-            $report = new \DateTime($item->reporteddate);
-            $this->time += $fixed->getTimestamp() - $report->getTimestamp();
-        }catch(Exception $e){
-            echo $e;
-            return;
-        }
+        $fixed =  new \DateTime($item->fixeddate);
+        $report = new \DateTime($item->reporteddate);
+        $this->time += $fixed->getTimestamp() - $report->getTimestamp();
     }
     
     public function sumUp(){
         /*
             When all incidents are added, this calculates the average time and ratio of fixes.
+            If the data cannot be processed (e.g. total is zero) nothing happens.
         */
         if($this->total <= 0){
-            return error("DomainData could not be summed up");
+            return;
         }
         $this->percent_fixed = $this->fixed / $this->total;
         if(0 ==  $this->percent_fixed){
