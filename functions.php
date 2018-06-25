@@ -19,6 +19,7 @@ function extract_attribute($array,$attribute){
     /*
         Returns the attribute 'attribute' from each object in one array
     */
-    return array_map(create_function('$o','return $o->'.$attribute.';'), $array); 
+    return array_map(function($o) use ($attribute){return $o->{$attribute};}, $array); 
 }
+
 ?>

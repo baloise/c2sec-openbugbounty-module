@@ -33,7 +33,6 @@ class Obb {
          Generates a report for given domain.
          Returns JSON.
          */
-        
         $domain = htmlspecialchars($domain);
 
         #TODO Regex check for valid domain?
@@ -166,7 +165,7 @@ class Obb {
         $result = $this->get_all_domains();
         $times = extract_attribute($result,'average_time');
         #Avoiding 0 as minimum,  average_time will be 0 if no incidents were fixed.
-        $times = array_map(create_function('$o','if(0 == $o)return INF;return $o;'),$times);
+        $times = array_map(function($o){if(0 == $o)return INF;return $o;},$times);
         return min($times);
     }
 
