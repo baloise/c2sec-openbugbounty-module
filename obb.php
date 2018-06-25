@@ -28,10 +28,10 @@ class Obb {
     #URL for bugbounty API. Returns an Incidents by id. 
     private $id_url = 'https://www.openbugbounty.org/api/1/id/?id=';
 
-    public function report($domain){
+    public function report($domain, $obj = false){
         /*
          Generates a report for given domain.
-         Returns JSON.
+         Returns JSON. (if $obj is true, it returns the DomainData-Object
          */
         $domain = htmlspecialchars($domain);
 
@@ -47,6 +47,9 @@ class Obb {
             return $xml;
         }
         $domain_data = $this->process_incidents($xml);
+        if($obj){
+            return $domain_data;
+        }
         $final_result = json_encode($domain_data);
         if(!$final_result){
             return error("Could not encode the result");
@@ -176,6 +179,13 @@ class Obb {
         $result = $this->get_all_domains();
         $times = extract_attribute($result,'average_time');
         return max($times);
+    }
+
+    public function get_rank($domain){
+        /*
+            This will return the ranking of $domain in comparison to all other domains.
+            Returns 0 to 1. 1.0 = best response time, 0.0 = worst response time            
+        */
     }
 }
 ?>
