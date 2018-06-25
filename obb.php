@@ -1,38 +1,35 @@
 <?php
 /*
- OPENBUGBOUNTY  C2SEC MODULE
-
- Workflow:
- 1.) Input: domainname of subject.
- 2.) Query openbugbounty.org API for all incidents
- 3.) Collect / Parse incidents
- 4.) Process incidents
- 5.) Evaluate 'score' / ouput-value
- 6.) Format result to JSON
- 7.) Return JSON
-
- Also provide additional methods, data, metrics
-*/
+ * OPENBUGBOUNTY  C2SEC MODULE
+ *
+ *
+ */
 namespace obb;
 
 require_once 'functions.php';
 require_once 'domain_data.php';
 
+/**
+ * Mainclass of this module.
+ */
 class Obb {
-    /*
-     Mainclass of this module.
-    */
+
     #URL for bugbounty API. Returns all incidents for a specific domain
     private $base_url = 'https://www.openbugbounty.org/api/1/search/?domain=';
 
     #URL for bugbounty API. Returns an Incidents by id. 
     private $id_url = 'https://www.openbugbounty.org/api/1/id/?id=';
 
+
+    /**
+     * Generates a report for given domain.
+     * @param string $domain Name of the subject.
+     * @param boolean $obj if true, return will be DomainData
+     * @throws EncodingException if DomainData could not be encoded
+     * @return string JSON-formatted DomainData
+     */
     public function report($domain, $obj = false){
-        /*
-         Generates a report for given domain.
-         Returns JSON. (if $obj is true, it returns the DomainData-Object
-         */
+
         $domain = htmlspecialchars($domain);
 
         #TODO Regex check for valid domain?
@@ -53,12 +50,16 @@ class Obb {
         return $final_result;
     }
 
+
+    /**
+     * processes XML data from openbugbounty.
+     * Input should be a list of incident reports regarding ONE domain.
+     * @param SimpleXMLElement $xml Parsed XML Structure from the API
+     * @throws XMLFormatException if the data cannot be processed / the API changed
+     * @return DomainData
+     */
     private function process_incidents($xml){
-        /*
-         processes XML data from openbugbounty.
-         Creates and returns an instance of DomainData
-         Throws XMLFormatException if the data cannot be processed / the API changed
-         */
+
         if(!isset($xml->children()[0]->host)){
             throw new XMLFormatException('host');
         }
@@ -71,11 +72,15 @@ class Obb {
         return $domain_data;
     }
 
+    /**
+     * curls an url, expects XML as result.
+     * @param string $url URL to curl
+     * @throws ConnectionException if response code is not equal 200.
+     * @throws NoResultException if the response body is empty or if the query resulted in an empty XML-tag.
+     * @return SimpleXMLElement  
+     */
     private function get_response($url){
-        /*
-            curls an url, excepts XML as a result.
-            returns the SimpleXMLElement or JSON (Error)
-        */
+        
         $curl_options = array(CURLOPT_URL => $url, CURLOPT_RETURNTRANSFER => 1);
         $curl = curl_init();
         curl_setopt_array($curl,$curl_options);
@@ -95,10 +100,11 @@ class Obb {
         return $xml;
     }
 
+    /**
+     * Returns the latest report's ID registered on openbugbounty.org
+     */ 
     private function get_latest_reportID(){
-        /*
-            Returns the latest report's ID registered on openbugbounty.org
-        */ 
+
         $latest_reports = $this->get_response($this->base_url);
 
         if(NULL != json_decode($latest_reports)){
@@ -118,13 +124,13 @@ class Obb {
         return $latest_id;
     }
 
-
+    /**
+     *  Returns a list von DomainData Objects, each for a different domain.
+     *  Iterating through all incidents
+     *  THIS WILL TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
+     */
     private function get_all_domains(){
-        /*
-            Returns a list von DomainData Objects, each for a different domain.
-            Iterating through all incidents
-            THIS WILL TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
-        */
+
         $counter = 0;
         $domain_list = array();
         $latest_id = $this->get_latest_reportID();
@@ -147,20 +153,22 @@ class Obb {
         return $domain_list;
     }
 
+    /**
+     * Returns the average time of all incidents (from all domains) in seconds.
+     */
     public function get_total_average_time(){
-        /*
-            Returns the average time of all incidents (from all domains) in seconds.
-        */
+        
         $result = $this->get_all_domains();
         $times = extract_attribute($result,'average_time');
         $total_time = array_sum($times); 
         return $total_time / sizeof($result);
     }
 
+    /**
+     * Returns the absolute minimum response time of all domain-owners in average, in seconds
+     */
     public function get_total_min_time(){
-        /*
-            Returns the absolute minimum response time of all domain-owners in average, in seconds
-        */
+        
         $result = $this->get_all_domains();
         $times = extract_attribute($result,'average_time');
         #Avoiding 0 as minimum,  average_time will be 0 if no incidents were fixed.
@@ -168,20 +176,22 @@ class Obb {
         return min($times);
     }
 
+    /**
+     * Returns the absolute maximum response time of all domain-owners in average, in seconds
+     */
     public function get_total_max_time(){
-        /*
-            Returns the absolute maximum response time of all domain-owners in average, in seconds
-        */
+        
         $result = $this->get_all_domains();
         $times = extract_attribute($result,'average_time');
         return max($times);
     }
-
+    
+    /**
+     * This will return the ranking of $domain in comparison to all other domains.
+     * Returns 0 to 1. 1.0 = best response time, 0.0 = worst response time            
+     */
     public function get_rank($domain){
-        /*
-            This will return the ranking of $domain in comparison to all other domains.
-            Returns 0 to 1. 1.0 = best response time, 0.0 = worst response time            
-        */
+        
     }
 }
 ?>

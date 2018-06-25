@@ -1,24 +1,20 @@
 <?php
-/*
-    OPENBUGBOUNTY C2SEC MODULE
-*/
+/**
+ * OPENBUGBOUNTY C2SEC MODULE
+ *
+ *
+ */
 namespace obb;
 
 
 require_once 'functions.php';
 
-class DomainData {
-    /*
-     Class for accumulated data for the domain
 
-     host: domain name
-     reports: list of urls for the reports on the website
-     total: total number of incidents
-     fixed: number of incidents fixed
-     average_time: average time it took to fix the incidents (fixeddate - reporteddate)
-     percent_fixed: fixed / total
-     types  : associative array, (type => number)
-    */
+/**
+ * Class for accumulated data for the domain
+ */
+class DomainData {
+
     public $host = NULL;
     public $reports = array();
     public $total = 0;
@@ -37,11 +33,11 @@ class DomainData {
         $this->host = (string)$host;
     }
 
-
+    /**
+     *  Validates the input. Returns nothing or Error message
+     */
     private function validate($item){
-        /*
-            Validates the input. Returns nothing or Error message
-        */
+
         foreach($this->list_values as $entry){
             if(!isset($item->$entry)){
                 throw new XMLFormatException($entry);
@@ -49,10 +45,11 @@ class DomainData {
         }
     }
 
+    /**
+     * Adds new incident to the object.
+     */   
     public function add($item){
-        /*
-            Adds new incident to the object.
-        */         
+      
         $this->validate($item);
 
         array_push($this->reports,(string)$item->url);
@@ -70,12 +67,13 @@ class DomainData {
         $report = new \DateTime($item->reporteddate);
         $this->time += $fixed->getTimestamp() - $report->getTimestamp();
     }
-    
+
+    /**
+     * When all incidents are added, this calculates the average time and ratio of fixes.
+     * If the data cannot be processed (e.g. total is zero) nothing happens.
+     */   
     public function sumUp(){
-        /*
-            When all incidents are added, this calculates the average time and ratio of fixes.
-            If the data cannot be processed (e.g. total is zero) nothing happens.
-        */
+
         if($this->total <= 0){
             return;
         }
