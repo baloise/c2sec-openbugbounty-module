@@ -33,7 +33,6 @@ class Obb {
          Generates a report for given domain.
          Returns JSON.
          */
-
         $domain = htmlspecialchars($domain);
 
         #TODO Regex check for valid domain?
@@ -63,9 +62,8 @@ class Obb {
         $domain_data = new DomainData($xml->children()[0]->host) or die("XML Node 'host' is missing");
 
         foreach($xml->children() as $item){
-
             #check format
-                    $domain_data->add($item); 
+            $domain_data->add($item); 
         }
         $final = $domain_data->sumUp();
         if(NULL != json_decode($final)){
@@ -128,25 +126,25 @@ class Obb {
             Returns a list von DomainData Objects, each for a different domain.
             Iterating through all incidents
         */
+        $counter = 0;
         $domain_list = array();
         $latest_id = $this->get_latest_reportID();           
         for(;$counter < $latest_id;$counter++){
-            sleep(1);
+            sleep(2);  #for safety
             $res = $this->get_response($this->id_url . $counter);
             if(NULL != json_decode($res)){
                 continue;
             }
-            $host = $res->children()[0]->host;
+            $host = (string)$res->children()[0]->host;
             if(NULL == $domain_list[$host]){
-                $domain_list[$host] = new DomainData($host); 
+                $domain_list[$host] = new DomainData($host);
             }
-            # Why won't this work
-            $domain_list[$host]->add($res);
+            $domain_list[$host]->add($res->children()[0]);
         }
         foreach($domain_list as $domain_data){
             $domain_data->sumUp();
         }
-        return $domain_list;
+        return array_map(json_encode,$domain_list);
     }
 
     public function get_total_average_time(){

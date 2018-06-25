@@ -1,8 +1,8 @@
 <?php
-require_once 'functions.php';
-
 namespace obb;
 
+
+require_once 'functions.php';
 
 class DomainData {
     /*
