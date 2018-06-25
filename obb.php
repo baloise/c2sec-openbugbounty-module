@@ -1,6 +1,6 @@
 <?php
 /*
- Openbugbounty C2SEC Module
+ OPENBUGBOUNTY  C2SEC MODULE
 
  Workflow:
  1.) Input: domainname of subject.
@@ -33,6 +33,7 @@ class Obb {
          Generates a report for given domain.
          Returns JSON.
          */
+        
         $domain = htmlspecialchars($domain);
 
         #TODO Regex check for valid domain?
@@ -120,18 +121,19 @@ class Obb {
     }
 
 
-    #Will be integrated in the report later on.
     private function get_all_domains(){
         /*
             Returns a list von DomainData Objects, each for a different domain.
             Iterating through all incidents
+            THIS WILL TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
         */
         $counter = 0;
         $domain_list = array();
-        $latest_id = $this->get_latest_reportID();           
+        $latest_id = $this->get_latest_reportID();
         for(;$counter < $latest_id;$counter++){
-            sleep(2);  #for safety
+            sleep(1);  #for safety
             $res = $this->get_response($this->id_url . $counter);
+            #TODO: Find better way to deal with Error messages. 
             if(NULL != json_decode($res)){
                 continue;
             }
@@ -144,25 +146,37 @@ class Obb {
         foreach($domain_list as $domain_data){
             $domain_data->sumUp();
         }
-        return array_map(json_encode,$domain_list);
+        return $domain_list;
     }
 
     public function get_total_average_time(){
         /*
             Returns the average time of all incidents (from all domains) in seconds.
         */
+        $result = $this->get_all_domains();
+        $times = extract_attribute($result,'average_time');
+        $total_time = array_sum($times); 
+        return $total_time / sizeof($result);
     }
 
     public function get_total_min_time(){
         /*
             Returns the absolute minimum response time of all domain-owners in average, in seconds
         */
+        $result = $this->get_all_domains();
+        $times = extract_attribute($result,'average_time');
+        #Avoiding 0 as minimum,  average_time will be 0 if no incidents were fixed.
+        $times = array_map(create_function('$o','if(0 == $o)return INF;return $o;'),$times);
+        return min($times);
     }
 
     public function get_total_max_time(){
         /*
             Returns the absolute maximum response time of all domain-owners in average, in seconds
         */
+        $result = $this->get_all_domains();
+        $times = extract_attribute($result,'average_time');
+        return max($times);
     }
 }
 ?>

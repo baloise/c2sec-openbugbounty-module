@@ -1,4 +1,7 @@
 <?php
+/*
+    OPENBUGBOUNTY C2SEC MODULE
+*/
 namespace obb;
 
 
@@ -36,6 +39,9 @@ class DomainData {
 
 
     private function validate($item){
+        /*
+            Validates the input. Returns nothing or Error message
+        */
         foreach($this->list_values as $entry){
             if(!isset($item->$entry)){
                 return error("XML Node " . $entry . " is missing.");
@@ -81,7 +87,11 @@ class DomainData {
             return error("DomainData could not be summed up");
         }
         $this->percent_fixed = $this->fixed / $this->total;
-        $this->average_time = $this->time / $this->total;
+        if(0 ==  $this->percent_fixed){
+            $this->average_time = 0;
+        }else{
+            $this->average_time = $this->time / $this->total;
+        }
     }
 }
 ?>
