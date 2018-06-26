@@ -7,6 +7,7 @@
 namespace obb;
 
 define('URL_SPLIT_LENGTH',6);
+define('CONFIG','./obb_config');
 
 /**
  * Returns json encoded error message

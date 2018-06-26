@@ -1,6 +1,6 @@
 <?php
 /*
- * OPENBUGBOUNTY  C2SEC MODULE
+ * OPENBUGBOUNTY C2SEC MODULE
  *
  *
  */
@@ -20,6 +20,18 @@ class Obb {
     #URL for bugbounty API. Returns an Incidents by id. 
     private $id_url = 'https://www.openbugbounty.org/api/1/id/?id=';
 
+    private $incident_index;
+
+    public function __construct(){
+        $config = parse_ini_file(CONFIG);
+        $incident_index = $config["incident_index"];
+    }
+
+
+    public function test_case($input){
+        #$list = $this->get_all_domains();
+        #echo $this->get_rank($input,$list);
+    }
 
     /**
      * Generates a report for given domain.
@@ -133,10 +145,16 @@ class Obb {
      * THIS WILL TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
      * @return DomainData[] List of all domains 
      */
-    private function get_all_domains(){
-
-        $counter = 0;
+    public function get_all_domains(){
+    
         $domain_list = array();
+        #read from 0 to index from file
+        #check each one, which has fixed = 0
+        #if the status changed update it
+        #set toupdate flag
+
+        #get all new ones
+        $counter = $incident_index;
         $latest_id = $this->get_latest_reportID();
         for(;$counter < $latest_id;$counter++){
             sleep(1);  #for safety
@@ -151,54 +169,63 @@ class Obb {
             }
             $domain_list[$host]->add($res->children()[0]);
         }
+        #sum everyone up, with to_update flag
         foreach($domain_list as $domain_data){
-            $domain_data->sumUp();
+            if($domain_data->to_update){
+                $domain_data->sumUp();
+            }
         }
+        #save domain_list to drive
         return $domain_list;
     }
 
+
     /**
-     * Returns the average time of all incidents (from all domains) in seconds.
+     * Returns the average time of all incidents (from the input array) in seconds.
+     * @param DomainData[] $domain_list 
      * @return float time in seconds
      */
-    public function get_total_average_time(){
+    public function get_total_average_time($domain_list){
         
-        $result = $this->get_all_domains();
-        $times = extract_attribute($result,'average_time');
+        $times = extract_attribute($domain_list,'average_time');
         $total_time = array_sum($times); 
         return $total_time / sizeof($result);
     }
 
     /**
-     * Returns the absolute minimum response time of all domain-owners in average, in seconds
+     * Returns the absolute minimum response time of all domain-owners (from the input list) in average, in seconds
+     * @param DomainData[] $domain_list
      * @return int time in seconds
      */
-    public function get_total_min_time(){
+    public function get_total_min_time($domain_list){
         
-        $result = $this->get_all_domains();
-        $times = extract_attribute($result,'average_time');
+        $times = extract_attribute($doman_list,'average_time');
         #Avoiding 0 as minimum,  average_time will be 0 if no incidents were fixed.
         $times = array_map(function($o){if(0 == $o)return INF;return $o;},$times);
         return min($times);
     }
 
     /**
-     * Returns the absolute maximum response time of all domain-owners in average, in seconds
+     * Returns the absolute maximum response time of all domain-owners (from the input list) in average, in seconds
+     * @param DomainData[] $domain_list
      * @return int time in seconds
      */
-    public function get_total_max_time(){
+    public function get_total_max_time($domain_list){
         
-        $result = $this->get_all_domains();
-        $times = extract_attribute($result,'average_time');
+        $times = extract_attribute($domain_list,'average_time');
         return max($times);
     }
     
     /**
-     * This will return the ranking of $domain in comparison to all other domains.
+     * This will return the ranking the given domain  in comparison to the input list.
      * Returns 0 to 1. 1.0 = best response time, 0.0 = worst response time            
      */
-    public function get_rank($domain){
-        
+    public function get_rank($domain,$domain_list){
+        $res = $this->report($domain);
+        $times = extract_attribute($domain_list,'average_time');
+        sort($times);
+        $pos = array_search($res->average_time,$times);
+        return $pos / sizeof($times);
     }
 }
 ?>

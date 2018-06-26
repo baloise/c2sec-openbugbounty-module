@@ -23,7 +23,7 @@ class DomainData {
     public $average_time = NULL;
     public $percent_fixed = 0.0;
     public $types = array();
-
+    public $to_update;
 
     #XML childnodes that are relevant. array is used to check the response in case the API was changed.
     private $list_values = ['host','url','type','reporteddate','fixed','fixeddate'];
@@ -31,6 +31,7 @@ class DomainData {
 
     public function __construct($host){
         $this->host = (string)$host;
+        $this->to_update = true;
     }
 
     /**
@@ -77,6 +78,7 @@ class DomainData {
      */   
     public function sumUp(){
 
+        $this->to_update = false
         if($this->total <= 0){
             return;
         }
