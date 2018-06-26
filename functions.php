@@ -10,17 +10,24 @@ define('URL_SPLIT_LENGTH',6);
 
 /**
  * Returns json encoded error message
+ * @param string $msg
+ * @return JSON-encoded string
  */
 function error($msg){
-
     return json_encode(array("ERROR"=>$msg));
 }
 
 /**
  * Returns the attribute 'attribute' from each object in one array
+ * @param array $array
+ * @param string $attribute
+ * @return array or NULL if the input is invalid
  */
 function extract_attribute($array,$attribute){
 
+    if(sizeof($array) == 0 or !isset($array[0]->{$attrubute})){
+        return NULL;
+    }
     return array_map(function($o) use ($attribute){return $o->{$attribute};}, $array); 
 }
 

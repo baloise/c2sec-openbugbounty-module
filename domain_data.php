@@ -34,7 +34,9 @@ class DomainData {
     }
 
     /**
-     *  Validates the input. Returns nothing or Error message
+     * Validates the input.
+     * @param SimpleXMLElement $item
+     * @throws XMLFormatException if the XML structure is different than expected
      */
     private function validate($item){
 
@@ -47,6 +49,7 @@ class DomainData {
 
     /**
      * Adds new incident to the object.
+     * @param SimpleXMLElement $item
      */   
     public function add($item){
       

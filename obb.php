@@ -102,6 +102,9 @@ class Obb {
 
     /**
      * Returns the latest report's ID registered on openbugbounty.org
+     * @throws XMLFormatException if the data cannot be processed / the API changed
+     * @throws FormatException if the URL is not accessible
+     * @return int the ID of the latest report
      */ 
     private function get_latest_reportID(){
 
@@ -125,9 +128,10 @@ class Obb {
     }
 
     /**
-     *  Returns a list von DomainData Objects, each for a different domain.
-     *  Iterating through all incidents
-     *  THIS WILL TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
+     * Returns a list von DomainData Objects, each for a different domain.
+     * Iterating through all incidents
+     * THIS WILL TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
+     * @return DomainData[] List of all domains 
      */
     private function get_all_domains(){
 
@@ -155,6 +159,7 @@ class Obb {
 
     /**
      * Returns the average time of all incidents (from all domains) in seconds.
+     * @return float time in seconds
      */
     public function get_total_average_time(){
         
@@ -166,6 +171,7 @@ class Obb {
 
     /**
      * Returns the absolute minimum response time of all domain-owners in average, in seconds
+     * @return int time in seconds
      */
     public function get_total_min_time(){
         
@@ -178,6 +184,7 @@ class Obb {
 
     /**
      * Returns the absolute maximum response time of all domain-owners in average, in seconds
+     * @return int time in seconds
      */
     public function get_total_max_time(){
         
