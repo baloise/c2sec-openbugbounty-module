@@ -83,12 +83,14 @@ class Obb {
                                     time BIGINT, 
                                     average_time DOUBLE, 
                                     percentage_fixed FLOAT, 
-                                    types TEXT)");
+                                    types TEXT,
+                                    PRIMARY KEY(host))");
     }
 
     #testing
     public function test_case($input){
         return $this->report($input);
+        #return $this->get_rank($input,$this->get_all_domains()); 
     }
 
     /**
@@ -197,6 +199,33 @@ class Obb {
         return $latest_id;
     }
 
+
+
+    /**
+     * Loads all data from the database into an array of DomainData
+     * @return DomainData[]
+     */
+    private function load_domain_data(){
+
+        $domain_list = array();
+        $res = $this->conn->query("SELECT * FROM domain_data");
+        $rows = $res->fetch_all();
+        foreach($rows as $row){
+            $host = $row['host'];
+            $domain_list[$host] = new DomainData($host);
+            $domain_list[$host]->reports = json_decode($row['reports']);
+            $domain_list[$host]->total = $row['total'];
+            $domain_list[$host]->fixed = $row['fixed'];
+            $domain_list[$host]->time = $row['time'];
+            $domain_list[$host]->average_time = $row['average_time'];
+            $domain_list[$host]->percentage_fixed = $row['percentage_fixed'];
+            $domain_list[$host]->types = json_decode($row['types']);
+            $domain_list[$host]->to_update = false;
+        }
+        return $domain_list;
+    }
+
+
     /**
      * Returns a list von DomainData Objects, each for a different domain.
      * Iterating through all incidents
@@ -205,14 +234,33 @@ class Obb {
      */
     public function get_all_domains(){
     
-        $domain_list = array();
         #load all domaindata object from database
+        $domain_list = $this->load_domain_data();
+        
         #check list of unfixed incident 
-        #if the status changed update it, delete entry, update domaindata
-        #set to update flag, so sumUp will be called
-
+        #if the status changed: update DomainData object, remove entry from list
+        $update_file_handle = fopen($this->to_update_file,'r');
+        $update_file_handle_new = fopen($this->to_update_file . "~",'w+');
+        if($update_file_handle){
+            while(($line = fgets($update_file_handle))){
+                $id = (int)$line;
+                $res = $this->get_response($this->id_url . $id);
+                $host = (string)$res->children()[0]->host;
+                if(1 == $res->children()[0]->fixed){
+                    $domain_list[$host]->add($res->children()[0]);
+                    $domain_list[$host]->to_update = true;
+                }else{
+                    fwrite($update_file_handle_new,$line);
+                }
+            }
+            fclose($update_file_handle_new);
+            fclose($update_file_handle);
+            unlink($this->to_update_file);
+            rename($this->to_update_file . "~", $this->to_update_file);
+        }
         #get all new ones
-        $counter = $incident_index;
+        $update_file_handle = fopen($this->to_update_file,'a');
+        $counter = $this->incident_index;
         $latest_id = $this->get_latest_reportID();
         for(;$counter < $latest_id;$counter++){
             sleep(1);  #for safety
@@ -226,15 +274,63 @@ class Obb {
                 $domain_list[$host] = new DomainData($host);
             }
             $domain_list[$host]->add($res->children()[0]);
+            #if an unfixed incident, write it to the list
+            if(0 == $res->children()[0]->fixed){
+               fwrite($update_file_handle,$counter . "\n"); 
+            }
         }
-        #sum everyone up, with to_update flag
+        fclose($update_file_handle);
+        #write to init file
+        #unpleasent solution, may require redo or import of pear Config_Lite
+        $ini_handler = fopen(CONFIG,'r');
+        $ini_handler_new = fopen(CONFIG . "~",'w+');
+        if($ini_handler){
+            while(($line = fgets($ini_handler))){
+                if(substr($line,0,14) === "incident_index"){
+                    fwrite($ini_handler_new,"incident_index=".$latest_id . "\n");
+                }else{
+                    fwrite($ini_handler_new,$line);
+                }
+            }
+            fclose($ini_handler);
+            fclose($ini_handler_new);
+            unlink(CONFIG);
+            rename(CONFIG . "~", CONFIG);
+        }
+
+        #sum everyone up, with to_update flag, and write to database
         foreach($domain_list as $domain_data){
             if($domain_data->to_update){
                 $domain_data->sumUp();
+                $this->write_database($domain_data);
             }
         }
-        #save domain_list to drive
         return $domain_list;
+    }
+
+
+    
+    /**
+     * Write a DomainData object to the database or update it
+     * @param DomainData 
+     */
+    private function write_database($domain_data){
+
+        $stmt = $this->conn->prepare("REPLACE INTO domain_data (host,reports,total,fixed,time,average_time,percentage_fixed,types) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt->bind_param("ssiiidds",$domain_data->host,
+                                    json_encode($domain_data->reports),
+                                    $domain_data->total,
+                                    $domain_data->fixed,
+                                    $domain_data->time,
+                                    $domain_data->average_time,
+                                    $domain_data->percentage_fixed,
+                                    json_encode($domain_data->types));
+        $res = $stmt->execute();
+        $stmt->close();
+        if(!$res){
+            #log
+            echo "database write could not be performed";
+        }
     }
 
 
@@ -281,8 +377,15 @@ class Obb {
     public function get_rank($domain,$domain_list){
         $res = $this->report($domain);
         $times = extract_attribute($domain_list,'average_time');
+        if(sizeof($times) == 0){
+            throw new \InvalidArgumentException("domain_list is not the excepted type or is empty");
+        }
         sort($times);
         $pos = array_search($res->average_time,$times);
+        if(false == pos){
+            #TODO: find better Exception
+            throw new \Exception("domain_list does not contain domain");
+        }
         return $pos / sizeof($times);
     }
 }
