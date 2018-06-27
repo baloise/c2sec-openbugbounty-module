@@ -21,7 +21,7 @@ class DomainData {
     public $fixed = 0;
     public $time = 0;
     public $average_time = NULL;
-    public $percent_fixed = 0.0;
+    public $percentage_fixed = 0.0;
     public $types = array();
     public $to_update;
 
@@ -78,12 +78,12 @@ class DomainData {
      */   
     public function sumUp(){
 
-        $this->to_update = false
+        $this->to_update = false;
         if($this->total <= 0){
             return;
         }
-        $this->percent_fixed = $this->fixed / $this->total;
-        if(0 ==  $this->percent_fixed){
+        $this->percentage_fixed = $this->fixed / $this->total;
+        if(0 ==  $this->percentage_fixed){
             $this->average_time = 0;
         }else{
             $this->average_time = $this->time / $this->total;

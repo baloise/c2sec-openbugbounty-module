@@ -20,17 +20,75 @@ class Obb {
     #URL for bugbounty API. Returns an Incidents by id. 
     private $id_url = 'https://www.openbugbounty.org/api/1/id/?id=';
 
+
+    /**
+     * Keeping track of the incidents that we already know of.
+     */
     private $incident_index;
 
+
+    /**
+     * Database connection.
+     * Only DomainData Object are saved in the database.
+     * This data will only be used if information about ALL domains is requested. 
+     * For a regular request, regarding one domain, the information will be retrieved from the API.
+     */
+    private $conn;
+
+    /**
+     * path to file containing all incident ids that need checking (if the incident got fixed)
+     */
+    private $to_update_file;
+
+    /**
+     * The constructor of an obb instance. 
+     * All initial setup and configuration will happen here.
+     *
+     * @throws mysqli_sql_exception in case it could not connect to the database
+     */
     public function __construct(){
         $config = parse_ini_file(CONFIG);
-        $incident_index = $config["incident_index"];
+        $this->incident_index = $config["incident_index"];
+        $this->to_update_file = $config["to_update_file"];       
+ 
+        if(NULL == $this->incident_index){
+            #TODO: implement logging
+            echo "Incident index not found in obb.ini, setting to 0.";
+            $this->incident_index = 0;
+        }
+        if(NULL == $this->to_update_file){
+            echo "path to to_update_file not set, setting default './.to_update_file'";
+            $this->to_update_file = './.to_update_file';
+        }
+
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+        $server = $config["db_server"];
+        $user = $config["db_user"]; 
+        $pass = $config["db_pass"];
+        $db = $config["database"];
+        
+        $this->conn = new \mysqli($server,$user,$pass,$db);
+
+        /*
+            create tables in first run
+            For now I will simply encode all reports and types into a string, so there won't be a need for additional tables and queries.
+            Later this might change, if there will be a need to query for a single vulnerablitity or similiar.
+        */
+        $res = $this->conn->query("CREATE TABLE IF NOT EXISTS domain_data 
+                                    (host VARCHAR(50),
+                                    reports LONGTEXT,
+                                    total INT, 
+                                    fixed INT, 
+                                    time BIGINT, 
+                                    average_time DOUBLE, 
+                                    percentage_fixed FLOAT, 
+                                    types TEXT)");
     }
 
-
+    #testing
     public function test_case($input){
-        #$list = $this->get_all_domains();
-        #echo $this->get_rank($input,$list);
+        return $this->report($input);
     }
 
     /**
@@ -142,16 +200,16 @@ class Obb {
     /**
      * Returns a list von DomainData Objects, each for a different domain.
      * Iterating through all incidents
-     * THIS WILL TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
+     * THIS MIGHT TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
      * @return DomainData[] List of all domains 
      */
     public function get_all_domains(){
     
         $domain_list = array();
-        #read from 0 to index from file
-        #check each one, which has fixed = 0
-        #if the status changed update it
-        #set toupdate flag
+        #load all domaindata object from database
+        #check list of unfixed incident 
+        #if the status changed update it, delete entry, update domaindata
+        #set to update flag, so sumUp will be called
 
         #get all new ones
         $counter = $incident_index;
