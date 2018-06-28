@@ -209,8 +209,7 @@ class Obb {
 
         $domain_list = array();
         $res = $this->conn->query("SELECT * FROM domain_data");
-        $rows = $res->fetch_all();
-        foreach($rows as $row){
+        while(($row = $res->fetch_assoc())){
             $host = $row['host'];
             $domain_list[$host] = new DomainData($host);
             $domain_list[$host]->reports = json_decode($row['reports']);
