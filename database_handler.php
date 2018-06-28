@@ -54,13 +54,13 @@ class DatabaseHandler{
         while(($row = $res->fetch_assoc())){
             $host = $row['host'];
             $domain_list[$host] = new DomainData($host);
-            $domain_list[$host]->reports = json_decode($row['reports']);
+            $domain_list[$host]->reports = (array)json_decode($row['reports']);
             $domain_list[$host]->total = $row['total'];
             $domain_list[$host]->fixed = $row['fixed'];
             $domain_list[$host]->time = $row['time'];
             $domain_list[$host]->average_time = $row['average_time'];
             $domain_list[$host]->percentage_fixed = $row['percentage_fixed'];
-            $domain_list[$host]->types = json_decode($row['types']);
+            $domain_list[$host]->types = (array)json_decode($row['types']);
             $domain_list[$host]->to_update = false;
         }
         return $domain_list;
