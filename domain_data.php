@@ -70,6 +70,7 @@ class DomainData {
         $fixed =  new \DateTime($item->fixeddate);
         $report = new \DateTime($item->reporteddate);
         $this->time += $fixed->getTimestamp() - $report->getTimestamp();
+        $this->to_update = true;
     }
 
     /**

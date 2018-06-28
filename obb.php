@@ -14,10 +14,14 @@ require_once 'domain_data.php';
  */
 class Obb {
 
-    #URL for bugbounty API. Returns all incidents for a specific domain
+    /**
+     * URL for bugbounty API. Returns all incidents for a specific domain
+     */
     private $base_url = 'https://www.openbugbounty.org/api/1/search/?domain=';
 
-    #URL for bugbounty API. Returns an Incidents by id. 
+    /**
+     * URL for bugbounty API. Returns an Incidents by id. 
+     */
     private $id_url = 'https://www.openbugbounty.org/api/1/id/?id=';
 
 
@@ -26,6 +30,11 @@ class Obb {
      */
     private $incident_index;
 
+
+    /**
+     * How many entries of newly read Datasets are written to the database at once.  
+     */
+    private $save_bulk_size = 50;
 
     /**
      * Database connection.
@@ -89,8 +98,8 @@ class Obb {
 
     #testing
     public function test_case($input){
-        return $this->report($input);
-        #return $this->get_rank($input,$this->get_all_domains()); 
+        #return $this->report($input);
+        return $this->get_rank($input,$this->get_all_domains()); 
     }
 
     /**
@@ -235,6 +244,8 @@ class Obb {
     
         #load all domaindata object from database
         $domain_list = $this->load_domain_data();
+        #keeping track of when we need to save the data to the drive
+        $bulk_counter = 0;
         
         #check list of unfixed incident 
         #if the status changed: update DomainData object, remove entry from list
@@ -247,7 +258,6 @@ class Obb {
                 $host = (string)$res->children()[0]->host;
                 if(1 == $res->children()[0]->fixed){
                     $domain_list[$host]->add($res->children()[0]);
-                    $domain_list[$host]->to_update = true;
                 }else{
                     fwrite($update_file_handle_new,$line);
                 }
@@ -263,6 +273,9 @@ class Obb {
         $latest_id = $this->get_latest_reportID();
         for(;$counter < $latest_id;$counter++){
             sleep(1);  #for safety
+            $bulk_counter++;
+            #output for now
+            echo $counter . "/" . $latest_id . "\n";
             try{
                 $res = $this->get_response($this->id_url . $counter);
             }catch (NoResultException $e){
@@ -276,6 +289,10 @@ class Obb {
             #if an unfixed incident, write it to the list
             if(0 == $res->children()[0]->fixed){
                fwrite($update_file_handle,$counter . "\n"); 
+            }
+            if($bulk_counter >= $this->save_bulk_size){
+                $domain_list = $this->write_bulk($domain_list);
+                $bulk_counter = 0;
             }
         }
         fclose($update_file_handle);
@@ -298,12 +315,7 @@ class Obb {
         }
 
         #sum everyone up, with to_update flag, and write to database
-        foreach($domain_list as $domain_data){
-            if($domain_data->to_update){
-                $domain_data->sumUp();
-                $this->write_database($domain_data);
-            }
-        }
+        $domain_list = $this->write_($domain_list);
         return $domain_list;
     }
 
@@ -332,6 +344,20 @@ class Obb {
         }
     }
 
+    /**
+     * Writes a bulk (of save_bulk_size) into the database
+     * @param DomainData[] 
+     * @return DomainData[] the updated list
+     */
+    private function write_bulk($domain_list){
+        foreach($domain_list as $domain_data){
+            if($domain_data->to_update){
+                $domain_data->sumUp();
+                $this->write_database($domain_data);
+            }
+        }
+        return $domain_list;
+    }
 
     /**
      * Returns the average time of all incidents (from the input array) in seconds.
