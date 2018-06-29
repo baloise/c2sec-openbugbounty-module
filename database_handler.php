@@ -139,7 +139,7 @@ class DatabaseHandler{
      * @return int time in seconds
      */
     public function get_avg_time(){
-        $res = $this->conn->query("SELECT average_time FROM domain_data");
+        $res = $this->conn->query("SELECT average_time FROM domain_data WHERE average_time > 0");
         if(NULL == $res or 0 == $res->num_rows){
             throw new Exception("Database is empty");
         }
@@ -156,7 +156,7 @@ class DatabaseHandler{
      * @return int time in seconds
      */
     public function get_min_time(){
-        $res = $this->conn->query("SELECT host FROM domain_data ORDER BY average_time ASC LIMIT 1");
+        $res = $this->conn->query("SELECT host FROM domain_data WHERE average_time > 0 ORDER BY average_time ASC LIMIT 1");
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
@@ -169,7 +169,7 @@ class DatabaseHandler{
      * @return int time in seconds
      */
     public function get_max_time(){
-        $res = $this->conn->query("SELECT host FROM domain_data ORDER BY average_time DESC LIMIT 1");
+        $res = $this->conn->query("SELECT host FROM domain_data WHERE average_time > 0 ORDER BY average_time DESC LIMIT 1");
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
@@ -183,7 +183,7 @@ class DatabaseHandler{
      * @return float a number between 0 and 1
      */
     public function get_rank($domain){
-        $res = $this->conn->query("SELECT host,average_time FROM domain_data ORDER BY average_time");
+        $res = $this->conn->query("SELECT host FROM domain_data WHERE average_time > 0 ORDER BY average_time");
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
@@ -193,10 +193,6 @@ class DatabaseHandler{
                 break;
             }
             $i++;
-        }
-        #if there is no average time at all, return 0 
-        if(-1 == $row[1]){
-            return 0;
         }
         return 1-($i/$res->num_rows);
     }

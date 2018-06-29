@@ -70,6 +70,10 @@ class DomainData {
         $fixed =  new \DateTime($item->fixeddate);
         $report = new \DateTime($item->reporteddate);
         $this->time += $fixed->getTimestamp() - $report->getTimestamp();
+        if($this->time > 0){
+            #log
+            echo "Fix Date was not correctly entered";
+        }
         $this->to_update = true;
     }
 

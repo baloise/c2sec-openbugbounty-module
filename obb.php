@@ -191,12 +191,16 @@ class Obb {
      * THIS MIGHT TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
      * @return DomainData[] List of all domains 
      */
-    public function get_all_domains(){
+    public function get_all_domains($fetch = true){
     
         #load all domaindata object from database
         $domain_list = $this->database_handler->load_domain_data();
         #keeping track of when we need to save the data to the drive
         $bulk_counter = 0;
+
+        if(!$fetch){
+            return $domain_list;
+        }
         
         #check list of unfixed incident 
         #if the status changed: update DomainData object, remove entry from list
