@@ -26,12 +26,30 @@ function error($msg){
  */
 function extract_attribute($array,$attribute){
 
-    if(sizeof($array) == 0 or !isset($array[0]->{$attrubute})){
+    if(0 == sizeof($array)){
         return NULL;
     }
     return array_map(function($o) use ($attribute){return $o->{$attribute};}, $array); 
 }
 
+/**
+ * Returns the ID from a given URL (openbugbounty API)
+ * @param string $url
+ * @throws XMLFormatException if the data cannot be processed / the API changed
+ * @throws FormatException if the URL is not accessible
+ * @return int ID
+ */
+function get_id($url){
+    $url_split = preg_split("/\//",$url);
+    if(sizeof($url_split) != URL_SPLIT_LENGTH){
+        throw new FormatException("URL format seems to be false." . $url);
+    }
+    $id = $url_split[sizeof($url_split)-2];
+    if(!is_numeric($id)){
+        throw new FormatException("URL format seems to be false, ID is not a number" . $latest_id);
+    }
+    return $id;
+}
 
 /**
  * Custom Exceptions:

@@ -18,7 +18,6 @@ To setup the database connection, change `db_server`,`db_user`,`db_pass` and `da
 
 obb also keeps track of which incidents might need update, namely the ones that are not fixed yet.
 The ids of those are saved to `.to_update_file`. 
-You can change this file in the configuration aswell.
 
 
 ### report

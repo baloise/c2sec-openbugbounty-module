@@ -44,7 +44,7 @@ class Obb {
     private $to_update_file;
 
     /**
-     * 
+     * Database object
      */
     private $database_handler;
 
@@ -57,17 +57,13 @@ class Obb {
     public function __construct(){
         $config = parse_ini_file(CONFIG);
         $this->incident_index = $config["incident_index"];
-        $this->to_update_file = $config["to_update_file"];       
  
         if(NULL == $this->incident_index){
             #TODO: implement logging
             echo "Incident index not found in obb.ini, setting to 0.";
             $this->incident_index = 0;
         }
-        if(NULL == $this->to_update_file){
-            echo "path to to_update_file not set, setting default './.to_update_file'";
-            $this->to_update_file = './.to_update_file';
-        }
+        $this->to_update_file = "./.to_update_file";
 
         $server = $config["db_server"];
         $user = $config["db_user"]; 
@@ -75,13 +71,12 @@ class Obb {
         $db = $config["database"];
         
         $this->database_handler = new DatabaseHandler($server,$user,$pass,$db);       
- 
     }
 
     #testing
     public function test_case($input){
         #return $this->report($input);
-        return $this->get_rank($input,$this->get_all_domains()); 
+        return $this->get_rank($input) . " " . $this->get_avg_time() . " " . $this->get_min_time() . " " . $this->get_max_time() . "\n";
     }
 
     /**
@@ -190,8 +185,6 @@ class Obb {
         return $latest_id;
     }
 
-
-
     /**
      * Returns a list von DomainData Objects, each for a different domain.
      * Iterating through all incidents
@@ -296,58 +289,36 @@ class Obb {
     }
 
     /**
-     * Returns the average time of all incidents (from the input array) in seconds.
-     * @param DomainData[] $domain_list 
+     * Returns the average time of all (recorded) incidents in seconds.
      * @return float time in seconds
      */
-    public function get_total_average_time($domain_list){
-        
-        $times = extract_attribute($domain_list,'average_time');
-        $total_time = array_sum($times); 
-        return $total_time / sizeof($result);
+    public function get_avg_time(){
+        return $this->database_handler->get_avg_time();
     }
 
     /**
-     * Returns the absolute minimum response time of all domain-owners (from the input list) in average, in seconds
-     * @param DomainData[] $domain_list
+     * Returns the absolute minimum response time of all (recorded) domain-owners in average, in seconds
      * @return int time in seconds
      */
-    public function get_total_min_time($domain_list){
-        
-        $times = extract_attribute($doman_list,'average_time');
-        #Avoiding 0 as minimum,  average_time will be 0 if no incidents were fixed.
-        $times = array_map(function($o){if(0 == $o)return INF;return $o;},$times);
-        return min($times);
+    public function get_min_time(){
+        return $this->database_handler->get_min_time();    
     }
 
     /**
-     * Returns the absolute maximum response time of all domain-owners (from the input list) in average, in seconds
-     * @param DomainData[] $domain_list
+     * Returns the absolute maximum response time of all (recorded) domain-owners (from the input list) in average, in seconds
      * @return int time in seconds
      */
-    public function get_total_max_time($domain_list){
-        
-        $times = extract_attribute($domain_list,'average_time');
-        return max($times);
+    public function get_max_time(){
+        return $this->database_handler->get_max_time();
     }
     
     /**
-     * This will return the ranking the given domain  in comparison to the input list.
-     * Returns 0 to 1. 1.0 = best response time, 0.0 = worst response time            
+     * This will return the ranking the given domain in comparison to all others.
+     * Returns 0 to 1. 1.0 = best response time, 0.0 = worst response time
+     * If the domain has no average time at all (no fixes ever) the result will be 0
      */
-    public function get_rank($domain,$domain_list){
-        $res = $this->report($domain);
-        $times = extract_attribute($domain_list,'average_time');
-        if(sizeof($times) == 0){
-            throw new \InvalidArgumentException("domain_list is not the excepted type or is empty");
-        }
-        sort($times);
-        $pos = array_search($res->average_time,$times);
-        if(false == pos){
-            #TODO: find better Exception
-            throw new \Exception("domain_list does not contain domain");
-        }
-        return $pos / sizeof($times);
+    public function get_rank($domain){
+        return $this->database_handler->get_rank($domain);
     }
 }
 ?>

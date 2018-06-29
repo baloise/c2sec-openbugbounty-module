@@ -85,7 +85,7 @@ class DomainData {
         }
         $this->percentage_fixed = $this->fixed / $this->total;
         if(0 ==  $this->percentage_fixed){
-            $this->average_time = 0;
+            $this->average_time = -1;
         }else{
             $this->average_time = $this->time / $this->total;
         }
