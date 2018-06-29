@@ -13,17 +13,14 @@ To change it, you must edit the following line in `functions.php`:
 ```
 define('CONFIG','./obb.ini');
 ```
-The configuration contains the `incident_index`, which keeps track of wich incidents are already saved in the database.
-To setup the database connection, change `db_server`,`db_user`,`db_pass` and `database`.
-
-obb also keeps track of which incidents might need update, namely the ones that are not fixed yet.
-The ids of those are saved to `.to_update_file`. 
+The configuration contains the `incident_index`, which keeps track of wich incidents are already saved in the database.  
+To setup the database connection, change `db_server`,`db_user`,`db_pass` and `database`.  
 
 ### Report
 
 obb generates a short report about all incidents regarding a given domain.  
-The data for the report is always fetched directly from openbugbounty.
-The report includes:
+The data for the report is always fetched directly from openbugbounty.  
+The report includes:  
 
 * host name
 * links to the reports on openbugbounty.org
@@ -36,26 +33,26 @@ The report includes:
 ### Metrics
 
 obb can give you 
-* a performance value for a given domain in regard of the response time (1=shortest response time,0=longest response time)
+* a ranking for a given domain in terms of response time (1=shortest response time,0=longest response time)
 * the average response time for all domains
 * the worst and best performing domains
 
+If the domain has not fixed any vulnerabilies yet, the ranking will return a zero.  
 The data for these metrics are coming from the database. In order to use them, you first have to populate your database.
+
 
 ### Database
 
 obb saves domain data in its own format, so no individual incidents is recorded. Instead the accumulated data of one domain (DomainData) is stored.  
-When populating the database, the process starts to iterate through all incident ids from openbugbounty. The starting index found in `obb.ini` as `incident_index`.  
+When populating the database, the process starts to iterate through all incident ids from openbugbounty.   
+The starting index found in `obb.ini` as `incident_index`.  
 Each incident is read and processed. After every 50 incidents the database will be updated.  
-To keep track of unfixed incidents, obb writes them to a file `.to_update_file`. Everytime the database is updated / populated, those incidents will be checked again.
+To keep track of unfixed incidents, obb writes them to a file `.to_update_file`. Everytime the database is updated / populated, those incidents will be checked again.  
 
 ## Dependencies:
 
-Written / Testet on:
-
-* PHP 7.2.0
-
-It should work on PHP 5.x aswell.  
+Written / Testet on: PHP 7.2.0  
+(But it should work on PHP 5.x aswell.)  
 
 * MySQL Server
 
@@ -83,8 +80,9 @@ Result:
 ```
 
 ### Database
-`get_all_domains()` fetches the data from openbugbounty, updates the database and returns an array of all DomainData Object  
-When running it initially (with incident_index equals 0) it will take a very long time (but the procedure can be discontinued and later renewed, since every 50 incidents are stored safely)  
+`get_all_domains()` fetches the data from openbugbounty, updates the database and   
+returns an array of all DomainData objecs.  
+When running it initially (with incident_index equals 0) it will take a very long time (but the procedure can be discontinued and later called again, since every 50 incidents are stored safely)  
 ```
 $obb->get_all_domains();
 ```
@@ -104,8 +102,9 @@ echo $obb->get_avg_time();
 
 Best / worst performing domain (shortest/longest response time):
 ```
-$obb->get_min_time();
-$obb->get_max_time();
+$best_domain = $obb->get_best(); 
+echo  $best_domain->host; #some.example.domain
+$obb->get_worst();
 ```
 
 Rank of a given domain (0 to 1):

@@ -62,9 +62,13 @@ class DatabaseHandler{
      * Returns a DomainData Object from a given name
      * @param string domainame
      * @throws Exception if the name was not found
+     * @throws Exception if the name was not provided
      * @return DomainData
      */
     public function get_domain($host){
+        if(NULL == $host){
+            throw new \Exception("domain is empty");
+        }
         $res = array();
         $stmt = $this->conn->prepare("SELECT * FROM domain_data WHERE host = ?");
         $stmt->bind_param("s",$host);
@@ -153,36 +157,40 @@ class DatabaseHandler{
     /**
      * Returns the domain with the minimum response time
      * @throws Exception if the result-set is null
-     * @return int time in seconds
+     * @return DomainData
      */
-    public function get_min_time(){
-        $res = $this->conn->query("SELECT host FROM domain_data WHERE average_time > 0 ORDER BY average_time ASC LIMIT 1");
+    public function get_best(){
+        $res = $this->conn->query("SELECT * FROM domain_data WHERE average_time > 0 ORDER BY average_time ASC LIMIT 1");
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
-        return $res->fetch_row()[0];
+        return $this->contruct_domain($res->fetch_row());
     }
 
     /**
      * Returns the domain with the maximum  response time
      * @throws Exception if the result-set is null
-     * @return int time in seconds
+     * @return DomainData
      */
-    public function get_max_time(){
-        $res = $this->conn->query("SELECT host FROM domain_data WHERE average_time > 0 ORDER BY average_time DESC LIMIT 1");
+    public function get_worst(){
+        $res = $this->conn->query("SELECT * FROM domain_data WHERE average_time > 0 ORDER BY average_time DESC LIMIT 1");
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
-        return $res->fetch_row()[0];
+        return $this->contruct_domain($res->fetch_row());
     }
 
     /**
      * Returns the rank of a given domain (1 = best , 0 = worst)
      * @param string the domain name
      * @throws Exception if the result-set is null
+     * @throws Exception if $domain is not provided
      * @return float a number between 0 and 1
      */
     public function get_rank($domain){
+        if(NULL == $domain){
+            throw new \Exception("domain is empty");
+        }
         $res = $this->conn->query("SELECT host FROM domain_data WHERE average_time > 0 ORDER BY average_time");
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");

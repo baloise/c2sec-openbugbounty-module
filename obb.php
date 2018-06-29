@@ -73,12 +73,6 @@ class Obb {
         $this->database_handler = new DatabaseHandler($server,$user,$pass,$db);       
     }
 
-    #testing
-    public function test_case($input){
-        #return $this->report($input);
-        return $this->get_rank($input) . " " . $this->get_avg_time() . " " . $this->get_min_time() . " " . $this->get_max_time() . "\n";
-    }
-
     /**
      * Generates a report for given domain.
      * @param string $domain Name of the subject.
@@ -98,6 +92,7 @@ class Obb {
         $url = $this->base_url . $domain;
         $xml = $this->get_response($url);
         $domain_data = $this->process_incidents($xml);
+        $this->database_handler->write_database($domain_data);
         if($obj){
             return $domain_data;
         }
@@ -160,8 +155,6 @@ class Obb {
 
     /**
      * Returns the latest report's ID registered on openbugbounty.org
-     * @throws XMLFormatException if the data cannot be processed / the API changed
-     * @throws FormatException if the URL is not accessible
      * @return int the ID of the latest report
      */ 
     private function get_latest_reportID(){
@@ -174,14 +167,7 @@ class Obb {
         if(!isset($latest_reports->children()[0]->url)){
             throw new XMLFormatException("XML Node 'url' is missing");
         }
-        $latest_url = preg_split("/\//",$latest_reports->children()[0]->url);
-        if(sizeof($latest_url) != URL_SPLIT_LENGTH){
-            throw new FormatException("URL format seems to be false." . $latest_reports->children()[0]->url);
-        }
-        $latest_id = $latest_url[sizeof($latest_url)-2];
-        if(!is_numeric($latest_id)){
-            throw new FormatException("URL format seems to be false, ID is not a number" . $latest_id);
-        }
+        $latest_id = get_id($latest_reports->children()[0]->url);
         return $latest_id;
     }
 
@@ -189,6 +175,7 @@ class Obb {
      * Returns a list von DomainData Objects, each for a different domain.
      * Iterating through all incidents
      * THIS MIGHT TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
+     * @param boolean $fetch if false only data from the database will be returned
      * @return DomainData[] List of all domains 
      */
     public function get_all_domains($fetch = true){
@@ -280,7 +267,7 @@ class Obb {
         if($ini_handler){
             while(($line = fgets($ini_handler))){
                 if(substr($line,0,14) === "incident_index"){
-                    fwrite($ini_handler_new,"incident_index=".$latest_id . "\n");
+                    fwrite($ini_handler_new,"incident_index=".$latest_id."\n");
                 }else{
                     fwrite($ini_handler_new,$line);
                 }
@@ -301,19 +288,19 @@ class Obb {
     }
 
     /**
-     * Returns the absolute minimum response time of all (recorded) domain-owners in average, in seconds
-     * @return int time in seconds
+     * Returns the domain with the absolute minimum average response time.
+     * @return DomainData
      */
-    public function get_min_time(){
-        return $this->database_handler->get_min_time();    
+    public function get_best(){
+        return $this->database_handler->get_best();    
     }
 
     /**
-     * Returns the absolute maximum response time of all (recorded) domain-owners (from the input list) in average, in seconds
-     * @return int time in seconds
+     * Returns the domain with the absolute maximum response time. 
+     * @return DomainData
      */
-    public function get_max_time(){
-        return $this->database_handler->get_max_time();
+    public function get_worst(){
+        return $this->database_handler->get_worst();
     }
     
     /**

@@ -56,6 +56,10 @@ class DomainData {
       
         $this->validate($item);
 
+        if(in_array((string)$item->url,$this->reports)){
+            return;
+        }
+
         array_push($this->reports,(string)$item->url);
         $this->total += 1;
 
@@ -70,7 +74,7 @@ class DomainData {
         $fixed =  new \DateTime($item->fixeddate);
         $report = new \DateTime($item->reporteddate);
         $this->time += $fixed->getTimestamp() - $report->getTimestamp();
-        if($this->time > 0){
+        if($this->time < 0){
             #log
             echo "Fix Date was not correctly entered";
         }

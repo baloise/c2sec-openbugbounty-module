@@ -23,6 +23,7 @@ function error($msg){
  * @param array $array
  * @param string $attribute
  * @return array or NULL if the input is invalid
+ * UNUSED RIGHT NOW
  */
 function extract_attribute($array,$attribute){
 
