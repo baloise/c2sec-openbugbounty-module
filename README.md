@@ -60,6 +60,9 @@ Other dependencies:
 * php-xml
 * php-mysqli
 
+For testing:
+* [PHPUnit](https://phpunit.de/index.html)
+
 ## Usage:
 
 ### Setup
