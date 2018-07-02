@@ -47,7 +47,7 @@ function get_id($url){
     }
     $id = $url_split[sizeof($url_split)-2];
     if(!is_numeric($id)){
-        throw new FormatException("URL format seems to be false, ID is not a number" . $latest_id);
+        throw new FormatException("URL format seems to be false, ID is not a number: " . $id);
     }
     return $id;
 }
