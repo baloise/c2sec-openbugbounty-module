@@ -281,35 +281,36 @@ class Obb {
 
     /**
      * Returns the average time of all (recorded) incidents in seconds.
-     * @return float time in seconds
+     * @return JSON time in seconds
      */
     public function get_avg_time(){
-        return $this->database_handler->get_avg_time();
+        return json_encode($this->database_handler->get_avg_time());
     }
 
     /**
      * Returns the domain with the absolute minimum average response time.
-     * @return DomainData
+     * @return JSON domain data
      */
     public function get_best(){
-        return $this->database_handler->get_best();    
+        return json_encode($this->database_handler->get_best());
     }
 
     /**
      * Returns the domain with the absolute maximum response time. 
-     * @return DomainData
+     * @return JSON domain data
      */
     public function get_worst(){
-        return $this->database_handler->get_worst();
+        return json_encode($this->database_handler->get_worst());
     }
     
     /**
      * This will return the ranking the given domain in comparison to all others.
-     * Returns 0 to 1. 1.0 = best response time, 0.0 = worst response time
      * If the domain has no average time at all (no fixes ever) the result will be 0
+     * @param string the domain name
+     * @return JSON (number between 0 and 1)
      */
     public function get_rank($domain){
-        return $this->database_handler->get_rank($domain);
+        return json_encode(array("rank"=>$this->database_handler->get_rank($domain)));
     }
 }
 ?>

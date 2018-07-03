@@ -164,7 +164,7 @@ class DatabaseHandler{
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
-        return $this->contruct_domain($res->fetch_row());
+        return $this->construct_domain($res->fetch_row());
     }
 
     /**
@@ -177,7 +177,7 @@ class DatabaseHandler{
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
-        return $this->contruct_domain($res->fetch_row());
+        return $this->construct_domain($res->fetch_row());
     }
 
     /**

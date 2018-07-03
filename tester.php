@@ -11,4 +11,14 @@
 
     echo "\n\nRanking of: " . $argv[1] . "\n\n";
     echo $obb->get_rank($argv[1]);
+    
+    echo "\n\nBest domain:\n\n";
+    echo $obb->get_best();
+
+    echo "\n\nWorst domain:\n\n";
+    echo $obb->get_worst();
+
+    echo "\n\nAverage time:\n\n";
+    echo $obb->get_avg_time();
+
 ?>
