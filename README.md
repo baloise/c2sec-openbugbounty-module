@@ -84,31 +84,34 @@ Result:
 returns an array of all DomainData objecs.  
 When running it initially (with incident_index equals 0) it will take a very long time (but the procedure can be discontinued and later called again, since every 50 incidents are stored safely)  
 ```
-$obb->get_all_domains();
+$all_domains = $obb->get_all_domains();
 ```
 
 Go get only  all currently stored data:
 ```
-$obb->load_domain_data($fetch = false)
+$all_domains = $obb->load_domain_data($fetch = false)
 ```
+
+To populate the database you can also run `populate_database.php`
 
 ### Metrics
 
 Total average time:
 ```
 echo $obb->get_avg_time();
-19399344.782198
+{"total_average_time":19399344.782198}
 ```
 
 Best / worst performing domain (shortest/longest response time):
 ```
 $best_domain = $obb->get_best(); 
-echo  $best_domain->host; #some.example.domain
-$obb->get_worst();
+echo $best_domain['host'];         #some.example.domain
+$worst_domain = $obb->get_worst();
+echo $worst_domain['average_time'] #3234924.422
 ```
 
 Rank of a given domain (0 to 1):
 ```
 echo $obb->get_rank("test.com");
-0.564
+{"rank":0.564}
 ```

@@ -284,7 +284,7 @@ class Obb {
      * @return JSON time in seconds
      */
     public function get_avg_time(){
-        return json_encode($this->database_handler->get_avg_time());
+        return json_encode(array("total_average_time"=>$this->database_handler->get_avg_time()));
     }
 
     /**
