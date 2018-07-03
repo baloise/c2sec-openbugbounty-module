@@ -83,9 +83,15 @@ class DatabaseHandler{
     /**
      * Creates a DomainData Object from a result row (expect a full row/query!)
      * @param array the result row
+     * @throw InvalidArgumentException if $row does not contain expected keys
      * @return DomainData
      */  
     private function construct_domain($row){
+    
+        if(!isset($row['host'])){
+            throw new \InvalidArgumentException("input does not contain expected keys");
+        }
+
         $host = $row['host'];
         $domain = new DomainData($host);
         $domain->reports = (array)json_decode($row['reports']);
@@ -164,7 +170,7 @@ class DatabaseHandler{
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
-        return $this->construct_domain($res->fetch_row());
+        return $this->construct_domain($res->fetch_assoc());
     }
 
     /**
@@ -177,7 +183,7 @@ class DatabaseHandler{
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
-        return $this->construct_domain($res->fetch_row());
+        return $this->construct_domain($res->fetch_assoc());
     }
 
     /**
