@@ -291,7 +291,7 @@ class Obb {
      * Returns the domain with the absolute minimum average response time.
      * @return JSON domain data
      */
-    public function get_best(){
+    public function get_best_domain(){
         return json_encode($this->database_handler->get_best());
     }
 
@@ -299,7 +299,7 @@ class Obb {
      * Returns the domain with the absolute maximum response time. 
      * @return JSON domain data
      */
-    public function get_worst(){
+    public function get_worst_domain(){
         return json_encode($this->database_handler->get_worst());
     }
     

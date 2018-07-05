@@ -128,12 +128,12 @@ It returns the following string. The time is measured in seconds.
 
 To get a report of the best-performing domain in regards to response time use:
 ```
-$best_domain = $obb->get_best(); 
+$best_domain = $obb->get_best_domain(); 
 ```
 
 For the report of the worst-performing domain:
 ```
-$worst_domain = $obb->get_worst();
+$worst_domain = $obb->get_worst_domain();
 ```
 
 Rank of a given domain:
