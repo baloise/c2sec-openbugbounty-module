@@ -22,13 +22,15 @@ obb generates a short report about all incidents regarding a given domain.
 The data for the report is always fetched directly from openbugbounty.  
 The report includes:  
 
-* host name
-* links to the reports on openbugbounty.org
-* total number of incidents
-* numer of fixed vulnerabilities
-* total time
-* average time it took to fix the vulnerabilities
-* types and prevalence of vulnerabilities
+**host:** Domain  
+**reports:** A list of URLs, linking to the openbbugbounty reports  
+**total:** Number of incidents  
+**fixed:** Number of fixed incidents  
+**time:** Total amount of time (in seconds) the domain had unfixed incidents.   
+**average_time:** Total amount of time devided by number of incidents.   
+**percentage_fixed:** Number of fixed incidents devided by number of incidents   
+**types:** A list of the vulnerabilites in format of: {"XSS":4,"REDIRECT":2}
+
 
 ### Metrics
 
@@ -43,11 +45,13 @@ The data for these metrics are coming from the database. In order to use them, y
 
 ### Database
 
-obb saves domain data in its own format, so no individual incidents is recorded. Instead the accumulated data of one domain (DomainData) is stored.  
+obb saves domain data in its own format, so no individual incidents is recorded.  
+Instead the accumulated data of one domain (DomainData) is stored.  
 When populating the database, the process starts to iterate through all incident ids from openbugbounty.   
 The starting index found in `obb.ini` as `incident_index`.  
 Each incident is read and processed. After every 50 incidents the database will be updated.  
-To keep track of unfixed incidents, obb writes them to a file `.to_update_file`. Everytime the database is updated / populated, those incidents will be checked again.  
+To keep track of unfixed incidents, obb writes them to a file `.to_update_file`.   
+Everytime the database is updated / populated, those incidents will be checked again.  
 
 ## Dependencies:
 
@@ -76,18 +80,33 @@ $obb->report('example.com');
 ```
 Result:
 ```
-{"host":"example.com","reports":["https:\/\/www.openbugbounty.org\/reports\/328896\/"],"total":1,"fixed":0,"time":22374879,"average_time":0,"percent_fixed":0,"types":{"XSS":1}}
+{"host":"example.com","reports":["https:\/\/www.openbugbounty.org\/reports\/328896\/"],"total":1,"fixed":0,"time":22374879,"average_time":0,"percentage_fixed":0,"types":{"XSS":1}}
 ```
 
+To return an associative array instead of JSON use:
+```
+$report = $obb->report('example.com',$obj = true);
+echo $report['average_time'];
+0
+```
+
+The report will be saved to the database automatically.
+
 ### Database
-`get_all_domains()` fetches the data from openbugbounty, updates the database and   
-returns an array of all DomainData objecs.  
-When running it initially (with incident_index equals 0) it will take a very long time (but the procedure can be discontinued and later called again, since every 50 incidents are stored safely)  
+
+To do more than just generating a report, you need to populate a database. To fetch the data from openbugbounty and/or update it use: 
 ```
 $all_domains = $obb->get_all_domains();
 ```
+This will also return an associative array of all domain reports.
+```
+echo $all_domains['google.com']['total'];
+13
+```
+When running it initially (with incident_index equals 0) it will take a very long time (but the procedure can be discontinued and later called again, since every 50 incidents are stored safely)  
+For safety reasons only one request per seconds is send.  
 
-Go get only  all currently stored data:
+Go get only  all currently stored data use:
 ```
 $all_domains = $obb->load_domain_data($fetch = false)
 ```
@@ -96,22 +115,31 @@ To populate the database you can also run `populate_database.php`
 
 ### Metrics
 
-Total average time:
+All functions descripted here use only the database as a source. They do not fetch it from openbugbounty.
+
+To retrieve the total average response time of all domains, use:
 ```
 echo $obb->get_avg_time();
+```
+It returns the following string. The time is measured in seconds.
+```
 {"total_average_time":19399344.782198}
 ```
 
-Best / worst performing domain (shortest/longest response time):
+To get a report of the best-performing domain in regards to response time use:
 ```
 $best_domain = $obb->get_best(); 
-echo $best_domain['host'];         #some.example.domain
-$worst_domain = $obb->get_worst();
-echo $worst_domain['average_time'] #3234924.422
 ```
 
-Rank of a given domain (0 to 1):
+For the report of the worst-performing domain:
+```
+$worst_domain = $obb->get_worst();
+```
+
+Rank of a given domain:
 ```
 echo $obb->get_rank("test.com");
 {"rank":0.564}
 ```
+The rank is measured as a number between 0 and 1 (0 = worst, 1 = best).
+

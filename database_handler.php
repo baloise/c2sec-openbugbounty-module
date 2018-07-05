@@ -32,7 +32,7 @@ class DatabaseHandler{
             Later this might change, if there will be a need to query for a single vulnerablitity or similiar.
         */
         $res = $this->conn->query("CREATE TABLE IF NOT EXISTS domain_data 
-                                    (host VARCHAR(50),
+                                    (host VARCHAR(100),
                                     reports LONGTEXT,
                                     total INT, 
                                     fixed INT, 
