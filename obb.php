@@ -172,54 +172,14 @@ class Obb {
     }
 
     /**
-     * Returns a list von DomainData Objects, each for a different domain.
-     * Iterating through all incidents
+     * Fetches all new incidents from openbugbounty
      * THIS MIGHT TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
-     * @param boolean $fetch if false only data from the database will be returned
-     * @return DomainData[] List of all domains 
      */
-    public function get_all_domains($fetch = true){
-    
-        #load all domaindata object from database
-        $domain_list = $this->database_handler->load_domain_data();
+    public function fetch_domains(){
+
         #keeping track of when we need to save the data to the drive
         $bulk_counter = 0;
 
-        if(!$fetch){
-            return $domain_list;
-        }
-        
-        #check list of unfixed incident 
-        #if the status changed: update DomainData object, remove entry from list
-        $update_file_handle = fopen($this->to_update_file,'r');
-        $update_file_handle_new = fopen($this->to_update_file . "~",'w+');
-        if($update_file_handle){
-            while(($line = fgets($update_file_handle))){
-                $id = (int)$line;
-                try{
-                    $res = $this->get_response($this->id_url . $id);
-                }catch(NoResultException $e){
-                    continue;
-                }
-                $host = (string)$res->children()[0]->host;
-                #It is possible that we have marked some domains for update, even though we have not saved them
-                #(when we terminate the run between bulk writes) 
-                #so we ignore them just for now, they will be written back later
-                if(NULL == $domain_list[$host]){
-                    continue;
-                }
-                if(1 == $res->children()[0]->fixed){
-                    $domain_list[$host]->add($res->children()[0]);
-                }else{
-                    fwrite($update_file_handle_new,$line);
-                }
-            }
-            fclose($update_file_handle_new);
-            fclose($update_file_handle);
-            unlink($this->to_update_file);
-            rename($this->to_update_file . "~", $this->to_update_file);
-        }
-        #get all new ones
         $update_file_handle = fopen($this->to_update_file,'a');
         $counter = $this->incident_index;
         $latest_id = $this->get_latest_reportID();
@@ -249,10 +209,64 @@ class Obb {
             }
         }
         fclose($update_file_handle);
-
-        #sum everyone up, with to_update flag, and write to database
         $this->update_incident_index($latest_id);
-        $domain_list = $this->database_handler->write_bulk($domain_list);
+    }
+
+    /**
+     *  Goes through all unresolved incidents, checks them and updates the database if necessary
+     */
+    public function check_unfixed_domains(){
+
+        $update_file_handle = fopen($this->to_update_file,'r');
+        $update_file_handle_new = fopen($this->to_update_file . "~",'w+');
+        if($update_file_handle){
+            while(($line = fgets($update_file_handle))){
+                $id = (int)$line;
+                try{
+                    $res = $this->get_response($this->id_url . $id);
+                }catch(NoResultException $e){
+                    continue;
+                }
+                $incident = $res->children()[0];
+                $host = (string)$incident->host;
+                if(1 == $incident->fixed){
+                    try{
+                        $newly_fixed = $this->database_handler->get_domain($host);
+                        #if this incident is a duplicate, try to just add the fix 
+                        #it can happen that incidents contained in .to_update are not saved in the database
+                        #(if the execution is interrupted between writes
+                        if(-1 == $newly_fixed->add($incident)){
+                            $newly_fixed->add_fix($incident);
+                        }
+                    }catch(Exception $e){
+                        #this entry does not exist yet. create new one.
+                        $newly_fixed = new DomainData($host);
+                        $newly_fixed->add($incident);
+                    }
+                    $this->database_handler->write_database($newly_fixed);
+                }else{
+                    fwrite($update_file_handle_new,$line);
+                }
+            }
+            fclose($update_file_handle_new);
+            fclose($update_file_handle);
+            unlink($this->to_update_file);
+            rename($this->to_update_file . "~", $this->to_update_file);
+        }
+    }
+
+    /**
+     * Returns a list von DomainData Objects, each for a different domain.
+     * @param boolean $fetch if false only data from the database will be returned
+     * @return DomainData[] List of all domains 
+     */
+    public function get_all_domains($fetch = true){
+
+        $this->check_unfixed_domanis();
+        if($fetch){
+            $this->fetch_domains();
+        }
+        $domain_list = $this->database_handler->load_domain_data();
         return $domain_list;
     }
 

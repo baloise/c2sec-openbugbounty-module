@@ -123,7 +123,6 @@ class DatabaseHandler{
         $res = $stmt->execute();
         $stmt->close();
         if(!$res){
-            #log
             echo "database write could not be performed";
         }
     }

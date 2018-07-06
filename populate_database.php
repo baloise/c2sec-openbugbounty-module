@@ -8,5 +8,5 @@
 require 'obb.php';
 
 $obb = new Obb\Obb();
-$obb->get_all_domains();
+$obb->fetch_domains();
 ?>
