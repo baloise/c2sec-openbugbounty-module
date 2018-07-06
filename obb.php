@@ -206,6 +206,7 @@ class Obb {
                 $domain_list = $this->database_handler->write_bulk($domain_list);
                 $this->update_incident_index($counter);
                 $bulk_counter = 0;
+                $domain_list = NULL;
             }
         }
         fclose($update_file_handle);
