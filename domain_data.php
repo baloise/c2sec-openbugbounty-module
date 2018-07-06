@@ -73,10 +73,12 @@ class DomainData {
         #requires date.timezone in php.ini to be set
         $fixed =  new \DateTime($item->fixeddate);
         $report = new \DateTime($item->reporteddate);
-        $this->time += $fixed->getTimestamp() - $report->getTimestamp();
-        if($this->time < 0){
+        $diff = $fixed->getTimestamp() - $report->getTimestamp();
+        if($diff < 0){
             #log
             echo "Fix Date was not correctly entered";
+        }else{
+            $this->time += $diff;
         }
         $this->to_update = true;
     }
