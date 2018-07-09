@@ -190,10 +190,13 @@ class DatabaseHandler{
      */
     public function get_best(){
 
-        $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")host_time GROUP BY host ORDER BY AVG(time) LIMIT 1";
+        $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")host_time GROUP BY host ORDER BY AVG(time)";
         $res = $this->conn->query($query);
-        $host = $res->fetch_row()[1];
-        return $this->get_domain($host);
+        while(($host = $res->fetch_row()[1])){
+           if(NULL == $this->conn->query("SELECT * FROM incident WHERE host = '" . $host . "' AND fixeddate = '". $this->invalid_date . "'")->fetch_row()){
+                return $this->get_domain($host);
+           }
+        }
     }
 
     /**
