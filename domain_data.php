@@ -56,6 +56,10 @@ class DomainData {
       
         $this->validate($item);
 
+
+        $this->total += 1;
+        array_push($this->types,$item["type"]);
+        array_push($this->reports,$item["report"]);
         $diff = 0;
         try{
             $reporteddate = new \DateTime($item["reporteddate"]);
@@ -65,7 +69,6 @@ class DomainData {
                 $fixeddate = new \DateTime($item["fixeddate"]);
                 $diff = $fixeddate->getTimestamp() - $reporteddate->getTimestamp();
                 if($diff < 0){
-                    echo "Fixeddate was set incorrectly";
                     return;
                 }
                 $this->fixed += 1;
@@ -79,10 +82,7 @@ class DomainData {
         }
 
         $this->time += $diff;
-        array_push($this->types,$item["type"]);
-        array_push($this->reports,$item["report"]);
-        $this->total += 1;
-     }
+    }
 
     /**
      * When all incidents are added,

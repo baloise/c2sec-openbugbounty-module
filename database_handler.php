@@ -23,6 +23,13 @@ class DatabaseHandler{
 
     private $invalid_date = '1970-01-01';
 
+
+    public $query_timediff = "SELECT (
+                                IF( fixeddate = '1970-01-01', 
+                                    UNIX_TIMESTAMP(NOW()),
+                                    UNIX_TIMESTAMP(fixeddate))
+                                - UNIX_TIMESTAMP(reporteddate)) AS time,host FROM incident";
+
     public function __construct($server,$user,$pass,$db){
     
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -167,13 +174,9 @@ class DatabaseHandler{
      */
     public function get_avg_time(){
 
-        $query_single_time = "SELECT (
-                                IF( fixeddate = '" . $this->invalid_date . "', 
-                                    UNIX_TIMESTAMP(NOW()),
-                                    UNIX_TIMESTAMP(fixeddate))
-                                - UNIX_TIMESTAMP(reporteddate)) AS time FROM incident";
 
-        $res = $this->conn->query("SELECT AVG(time) FROM (" . $query_single_time . ") incident_time");
+
+        $res = $this->conn->query("SELECT AVG(time) FROM (" . $this->query_timediff . ") incident_time");
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
@@ -186,11 +189,11 @@ class DatabaseHandler{
      * @return DomainData
      */
     public function get_best(){
-        $res = $this->conn->query("SELECT * FROM domain_data WHERE average_time > 0 ORDER BY average_time ASC LIMIT 1");
-        if(NULL == $res or 0 == $res->num_rows){
-            throw new \Exception("Database is empty");
-        }
-        return $this->construct_domain($res->fetch_assoc());
+
+        $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")host_time GROUP BY host ORDER BY AVG(time) LIMIT 1";
+        $res = $this->conn->query($query);
+        $host = $res->fetch_row()[1];
+        return $this->get_domain($host);
     }
 
     /**
@@ -199,11 +202,11 @@ class DatabaseHandler{
      * @return DomainData
      */
     public function get_worst(){
-        $res = $this->conn->query("SELECT * FROM domain_data WHERE average_time > 0 ORDER BY average_time DESC LIMIT 1");
-        if(NULL == $res or 0 == $res->num_rows){
-            throw new \Exception("Database is empty");
-        }
-        return $this->construct_domain($res->fetch_assoc());
+
+        $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")host_time GROUP BY host ORDER BY AVG(time) DESC LIMIT 1";
+        $res = $this->conn->query($query);
+        $host = $res->fetch_row()[1];
+        return $this->get_domain($host);
     }
 
     /**

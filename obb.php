@@ -35,7 +35,7 @@ class Obb {
     /**
      * How many entries of newly read Datasets are written to the database at once.  
      */
-    private $save_bulk_size = 50;
+    private $save_bulk_size = 5;
 
 
     /**
