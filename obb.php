@@ -39,11 +39,6 @@ class Obb {
 
 
     /**
-     * path to file containing all incident ids that need checking (if the incident got fixed)
-     */
-    private $to_update_file;
-
-    /**
      * Database object
      */
     private $database_handler;
@@ -63,7 +58,6 @@ class Obb {
             echo "Incident index not found in obb.ini, setting to 0.";
             $this->incident_index = 0;
         }
-        $this->to_update_file = "./.to_update_file";
 
         $server = $config["db_server"];
         $user = $config["db_user"]; 
@@ -92,7 +86,6 @@ class Obb {
         $url = $this->base_url . $domain;
         $xml = $this->get_response($url);
         $domain_data = $this->process_incidents($xml);
-        $this->database_handler->write_database($domain_data);
         if($obj){
             return $domain_data;
         }
@@ -116,12 +109,14 @@ class Obb {
         if(!isset($xml->children()[0]->host)){
             throw new XMLFormatException('host');
         }
-        $domain_data = new DomainData($xml->children()[0]->host);
+
+        $host = $xml->children()[0]->host;
 
         foreach($xml->children() as $item){
-            $domain_data->add($item); 
+            $this->database_handler->write_database($item);
         }
-        $domain_data->sumUp();
+
+        $domain_data = $this->database_handler->get_domain($host);
         return $domain_data;
     }
 
@@ -180,9 +175,9 @@ class Obb {
         #keeping track of when we need to save the data to the drive
         $bulk_counter = 0;
 
-        $update_file_handle = fopen($this->to_update_file,'a');
         $counter = $this->incident_index;
         $latest_id = $this->get_latest_reportID();
+        $incidents = array();
         for(;$counter < $latest_id;$counter++){
             sleep(1);  #for safety
             $bulk_counter++;
@@ -193,23 +188,13 @@ class Obb {
             }catch (NoResultException $e){
                 continue;
             }
-            $host = (string)$res->children()[0]->host;
-            if(NULL == $domain_list[$host]){
-                $domain_list[$host] = new DomainData($host);
-            }
-            $domain_list[$host]->add($res->children()[0]);
-            #if an unfixed incident, write it to the list
-            if(0 == $res->children()[0]->fixed){
-               fwrite($update_file_handle,$counter . "\n"); 
-            }
+            array_push($incidents,$res->children()[0]);
             if($bulk_counter >= $this->save_bulk_size){
-                $domain_list = $this->database_handler->write_bulk($domain_list);
-                $this->update_incident_index($counter);
+                $this->database_handler->write_bulk($incidents);
+                $incidents = array();
                 $bulk_counter = 0;
-                $domain_list = NULL;
             }
         }
-        fclose($update_file_handle);
         $this->update_incident_index($latest_id);
     }
 
@@ -218,41 +203,17 @@ class Obb {
      */
     public function check_unfixed_domains(){
 
-        $update_file_handle = fopen($this->to_update_file,'r');
-        $update_file_handle_new = fopen($this->to_update_file . "~",'w+');
-        if($update_file_handle){
-            while(($line = fgets($update_file_handle))){
-                $id = (int)$line;
-                try{
-                    $res = $this->get_response($this->id_url . $id);
-                }catch(NoResultException $e){
-                    continue;
-                }
-                $incident = $res->children()[0];
-                $host = (string)$incident->host;
-                if(1 == $incident->fixed){
-                    try{
-                        $newly_fixed = $this->database_handler->get_domain($host);
-                        #if this incident is a duplicate, try to just add the fix 
-                        #it can happen that incidents contained in .to_update are not saved in the database
-                        #(if the execution is interrupted between writes
-                        if(-1 == $newly_fixed->add($incident)){
-                            $newly_fixed->add_fix($incident);
-                        }
-                    }catch(Exception $e){
-                        #this entry does not exist yet. create new one.
-                        $newly_fixed = new DomainData($host);
-                        $newly_fixed->add($incident);
-                    }
-                    $this->database_handler->write_database($newly_fixed);
-                }else{
-                    fwrite($update_file_handle_new,$line);
-                }
+        # update_file is not needed anymore, just query all incidents with fixeddate = NULL
+        $unfixed_incidents = $this->database_handler->unfixed_incidents();
+        foreach($unfixed_incidents as $incident){
+            try{
+                $res = $this->get_response($incident["id"]);
+            }catch(\Exception $e){
+                continue; 
             }
-            fclose($update_file_handle_new);
-            fclose($update_file_handle);
-            unlink($this->to_update_file);
-            rename($this->to_update_file . "~", $this->to_update_file);
+            if(1 == $res->children()[0]->fixed){
+                $this->database_handler->write_database($res); 
+            } 
         }
     }
 

@@ -31,16 +31,14 @@ class DatabaseHandler{
             For now I will simply encode all reports and types into a string, so there won't be a need for additional tables and queries.
             Later this might change, if there will be a need to query for a single vulnerablitity or similiar.
         */
-        $res = $this->conn->query("CREATE TABLE IF NOT EXISTS domain_data 
-                                    (host VARCHAR(100),
-                                    reports LONGTEXT,
-                                    total INT, 
-                                    fixed INT, 
-                                    time BIGINT, 
-                                    average_time DOUBLE, 
-                                    percentage_fixed FLOAT, 
-                                    types TEXT,
-                                    PRIMARY KEY(host))");
+        $res = $this->conn->query("CREATE TABLE IF NOT EXISTS incident 
+                                    (id INT,
+                                    host VARCHAR(100),
+                                    report LONGTEXT,
+                                    reporteddate DATE, 
+                                    fixeddate DATE,
+                                    type TEXT,
+                                    PRIMARY KEY(id))");
     }    
 
     /**
@@ -50,10 +48,16 @@ class DatabaseHandler{
     public function load_domain_data(){
 
         $domain_list = array();
-        $res = $this->conn->query("SELECT * FROM domain_data");
+        $res = $this->conn->query("SELECT * FROM incidents");
         while(($row = $res->fetch_assoc())){
             $host = $row['host'];
-            $domain_list[$host] = $this->construct_domain($row);
+            if(NULL == $domain_list[$host]){
+                $domain_list[$host] = new DomainData($host);
+            }
+            $domain_list[$host]->add($row); 
+        }
+        foreach($domain_list as $domain_data){
+            $domain_data->sumUp();
         }
         return $domain_list;
     }
@@ -70,14 +74,18 @@ class DatabaseHandler{
             throw new \Exception("domain is empty");
         }
         $res = array();
-        $stmt = $this->conn->prepare("SELECT * FROM domain_data WHERE host = ?");
+        $stmt = $this->conn->prepare("SELECT * FROM incident WHERE host = ?");
         $stmt->bind_param("s",$host);
         if(!$stmt->execute()){
             throw new \Exception("No domain " . $host . " found");
         }
         $res = $stmt->get_result();
-        $row = $res->fetch_assoc();
-        return $this->construct_domain($row);
+        $domain_data = new DomainData($host);
+        while(($row = $res->fetch_assoc())){
+            $domain_data->add($row);
+        }
+        $domain_data->sumUp();
+        return $domain_data;
     }
 
     /**
@@ -109,17 +117,25 @@ class DatabaseHandler{
      * Write a DomainData object to the database or update it
      * @param DomainData 
      */
-    public function write_database($domain_data){
+    public function write_database($incident){
 
-        $stmt = $this->conn->prepare("REPLACE INTO domain_data (host,reports,total,fixed,time,average_time,percentage_fixed,types) VALUES (?,?,?,?,?,?,?,?)");
-        $stmt->bind_param("ssiiidds",$domain_data->host,
-                                    json_encode($domain_data->reports),
-                                    $domain_data->total,
-                                    $domain_data->fixed,
-                                    $domain_data->time,
-                                    $domain_data->average_time,
-                                    $domain_data->percentage_fixed,
-                                    json_encode($domain_data->types));
+        $reporteddate = new \DateTime($incident->reporteddate);
+        $reporteddate = $reporteddate->format('Y-m-d H:i:s');
+
+        if(1 == $incident->fixed){
+            $fixeddate = new \DateTime($incident->fixeddate);
+            $fixeddate = $fixeddate->format('Y-m-d H:i:s');
+        }else{
+            $fixeddate = NULL;
+        }
+
+        $stmt = $this->conn->prepare("REPLACE INTO incident (id,host,report,reporteddate,fixeddate,type) VALUES (?,?,?,?,?,?)");
+        $stmt->bind_param("isssss",get_id($incident->url),
+                                    $incident->host,
+                                    $incident->url,
+                                    $reporteddate,
+                                    $fixeddate,
+                                    $incident->type);
         $res = $stmt->execute();
         $stmt->close();
         if(!$res){
@@ -132,14 +148,10 @@ class DatabaseHandler{
      * @param DomainData[] 
      * @return DomainData[] the updated list
      */
-    public function write_bulk($domain_list){
-        foreach($domain_list as $domain_data){
-            if($domain_data->to_update){
-                $domain_data->sumUp();
-                $this->write_database($domain_data);
+    public function write_bulk($incident_list){
+        foreach($incident_list as $incident){
+                $this->write_database($incident);
             }
-        }
-        return $domain_list;
     }
 
     /**
