@@ -20,6 +20,9 @@ class DatabaseHandler{
      */
     private $conn;
 
+
+    private $invalid_date = '1970-01-01';
+
     public function __construct($server,$user,$pass,$db){
     
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -126,7 +129,9 @@ class DatabaseHandler{
             $fixeddate = new \DateTime($incident->fixeddate);
             $fixeddate = $fixeddate->format('Y-m-d H:i:s');
         }else{
-            $fixeddate = NULL;
+            #Since comparing with NULL does not work in SQL IF Statement
+            $fixeddate = new \DateTime();
+            $fixeddate = $fixeddate->format($this->invalid_date);
         }
 
         $stmt = $this->conn->prepare("REPLACE INTO incident (id,host,report,reporteddate,fixeddate,type) VALUES (?,?,?,?,?,?)");
@@ -156,19 +161,23 @@ class DatabaseHandler{
 
     /**
      * Returns the total average response time of all domains
+     * (With the waiting time for each incident seperately!)
      * @throws Exception if the result-set is null
      * @return int time in seconds
      */
     public function get_avg_time(){
-        $res = $this->conn->query("SELECT average_time FROM domain_data WHERE average_time > 0");
+
+        $query_single_time = "SELECT (
+                                IF( fixeddate = '" . $this->invalid_date . "', 
+                                    UNIX_TIMESTAMP(NOW()),
+                                    UNIX_TIMESTAMP(fixeddate))
+                                - UNIX_TIMESTAMP(reporteddate)) AS time FROM incident";
+
+        $res = $this->conn->query("SELECT AVG(time) FROM (" . $query_single_time . ") incident_time");
         if(NULL == $res or 0 == $res->num_rows){
-            throw new Exception("Database is empty");
+            throw new \Exception("Database is empty");
         }
-        $total = 0.0;
-        while(($row = $res->fetch_row())){
-            $total += $row[0];
-        }
-        return $total/$res->num_rows;
+        return $res->fetch_row()[0];
     }
 
     /**
