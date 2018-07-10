@@ -195,12 +195,13 @@ class DatabaseHandler{
      */
     public function get_best(){
 
-        $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")host_time GROUP BY host ORDER BY AVG(time)";
+        $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")incident_time GROUP BY host ORDER BY AVG(time)";
         $res = $this->conn->query($query);
         while(($host = $res->fetch_row()[1])){
-           if(NULL == $this->conn->query("SELECT * FROM incident WHERE host = '" . $host . "' AND fixeddate = '". INVALID_DATE . "'")->fetch_row()){
+            #only domains that have every vulnerability fixed are considered 
+            if(NULL == $this->conn->query("SELECT * FROM incident WHERE host = '" . $host . "' AND fixeddate = '". INVALID_DATE . "'")->fetch_row()){
                 return $this->get_domain($host);
-           }
+            }
         }
     }
 
@@ -211,7 +212,7 @@ class DatabaseHandler{
      */
     public function get_worst(){
 
-        $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")host_time GROUP BY host ORDER BY AVG(time) DESC LIMIT 1";
+        $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")incident_time GROUP BY host ORDER BY AVG(time) DESC LIMIT 1";
         $res = $this->conn->query($query);
         $host = $res->fetch_row()[1];
         return $this->get_domain($host);
@@ -225,21 +226,30 @@ class DatabaseHandler{
      * @return float a number between 0 and 1
      */
     public function get_rank($domain){
+       
         if(NULL == $domain){
-            throw new \Exception("domain is empty");
+            throw new NoResultException("No searchterm provided");
+        } 
+
+        $total_number_domains = $this->conn->query("SELECT COUNT(DISTINCT host) FROM incident")->fetch_row()[0];
+        if(0 == $total_number_domains or NULL == $total_number_domains){
+            throw new NoResultException("The database seems to be empty");
         }
-        $res = $this->conn->query("SELECT host FROM domain_data WHERE average_time > 0 ORDER BY average_time");
-        if(NULL == $res or 0 == $res->num_rows){
-            throw new \Exception("Database is empty");
+
+        $prepared_table = "SELECT AVG(time) AS avg_time ,host 
+                            FROM (" . $this->query_timediff . ")incident_time 
+                            GROUP BY host ORDER BY AVG(time)";
+
+        $query = "SELECT COUNT(host) 
+                  FROM (" . $prepared_table . ")prepared_table
+                  WHERE avg_time > (SELECT avg_time FROM ( " . $prepared_table . ")prepared_table WHERE host = '" . $domain . "')"; 
+        $res = $this->conn->query($query);
+        $number_worse_domains = $res->fetch_row()[0];
+        if(NULL == $number_worse_domains){
+           throw new NoResultException(); 
         }
-        $i = 0;
-        while(($row = $res->fetch_row())){
-            if($row[0] == $domain){
-                break;
-            }
-            $i++;
-        }
-        return 1-($i/$res->num_rows);
+        return $number_worse_domains / $total_number_domains;
+            
     }
 }
 ?>
