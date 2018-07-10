@@ -35,7 +35,7 @@ class Obb {
     /**
      * How many entries of newly read Datasets are written to the database at once.  
      */
-    private $save_bulk_size = 5;
+    private $save_bulk_size = 50;
 
 
     /**
@@ -55,8 +55,8 @@ class Obb {
  
         if(NULL == $this->incident_index){
             #TODO: implement logging
-            echo "Incident index not found in obb.ini, setting to 0.";
-            $this->incident_index = 0;
+            echo "Incident index not found in obb.ini, setting to 48011. (First entry)";
+            $this->incident_index = 48011;
         }
 
         $server = $config["db_server"];
@@ -115,7 +115,7 @@ class Obb {
         foreach($xml->children() as $item){
             $this->database_handler->write_database($item);
         }
-
+        #TODO: change the format without first writing and reading from the database
         $domain_data = $this->database_handler->get_domain($host);
         return $domain_data;
     }
@@ -207,14 +207,15 @@ class Obb {
         # update_file is not needed anymore, just query all incidents with fixeddate = NULL
         $unfixed_incidents = $this->database_handler->unfixed_incidents();
         foreach($unfixed_incidents as $incident){
+            sleep(1);
             try{
-                $res = $this->get_response($incident["id"]);
+                $res = $this->get_response($this->id_url . (int)$incident["id"]);
             }catch(\Exception $e){
                 continue; 
             }
             if(1 == $res->children()[0]->fixed){
                 $this->database_handler->write_database($res); 
-            } 
+            }
         }
     }
 
@@ -225,7 +226,7 @@ class Obb {
      */
     public function get_all_domains($fetch = true){
 
-        $this->check_unfixed_domanis();
+        $this->check_unfixed_domains();
         if($fetch){
             $this->fetch_domains();
         }

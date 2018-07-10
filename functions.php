@@ -20,21 +20,6 @@ function error($msg){
 }
 
 /**
- * Returns the attribute 'attribute' from each object in one array
- * @param array $array
- * @param string $attribute
- * @return array or NULL if the input is invalid
- * UNUSED RIGHT NOW
- */
-function extract_attribute($array,$attribute){
-
-    if(0 == sizeof($array)){
-        return NULL;
-    }
-    return array_map(function($o) use ($attribute){return $o->{$attribute};}, $array); 
-}
-
-/**
  * Returns the ID from a given URL (openbugbounty API)
  * @param string $url
  * @throws XMLFormatException if the data cannot be processed / the API changed

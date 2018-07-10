@@ -45,13 +45,10 @@ The data for these metrics are coming from the database. In order to use them, y
 
 ### Database
 
-obb saves domain data in its own format, so no individual incidents is recorded.  
-Instead the accumulated data of one domain (DomainData) is stored.  
 When populating the database, the process starts to iterate through all incident ids from openbugbounty.   
 The starting index found in `obb.ini` as `incident_index`.  
-Each incident is read and processed. After every 50 incidents the database will be updated.  
-To keep track of unfixed incidents, obb writes them to a file `.to_update_file`.   
-Everytime the database is updated / populated, those incidents will be checked again.  
+Each incident is saved. After every 50 incidents the database will be updated.  
+Everytime the database is updated / populated, the still unfixed  incidents will be checked again.
 
 ## Dependencies:
 
@@ -63,6 +60,7 @@ Written / Testet on: PHP 7.2.0
 Other dependencies:
 * php-xml
 * php-mysqli
+* php-curl
 
 ## Usage:
 
@@ -142,4 +140,3 @@ echo $obb->get_rank("test.com");
 {"rank":0.564}
 ```
 The rank is measured as a number between 0 and 1 (0 = worst, 1 = best).
-

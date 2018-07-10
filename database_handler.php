@@ -14,7 +14,7 @@ class DatabaseHandler{
 
     /**
      * Database connection.
-     * Only DomainData Object are saved in the database.
+     * Data of each incident will be stored
      * This data will only be used if information about ALL domains is requested. 
      * For a regular request, regarding one domain, the information will be retrieved from the API.
      */
@@ -40,11 +40,6 @@ class DatabaseHandler{
 
         $this->conn = new \mysqli($server,$user,$pass,$db);
 
-        /*
-            create tables in first run
-            For now I will simply encode all reports and types into a string, so there won't be a need for additional tables and queries.
-            Later this might change, if there will be a need to query for a single vulnerablitity or similiar.
-        */
         $res = $this->conn->query("CREATE TABLE IF NOT EXISTS incident 
                                     (id INT,
                                     host VARCHAR(100),
@@ -102,34 +97,20 @@ class DatabaseHandler{
         return $domain_data;
     }
 
-    /**
-     * Creates a DomainData Object from a result row (expect a full row/query!)
-     * @param array the result row
-     * @throw InvalidArgumentException if $row does not contain expected keys
-     * @return DomainData
-     */  
-    private function construct_domain($row){
-    
-        if(!isset($row['host'])){
-            throw new \InvalidArgumentException("input does not contain expected keys");
-        }
 
-        $host = $row['host'];
-        $domain = new DomainData($host);
-        $domain->reports = (array)json_decode($row['reports']);
-        $domain->total = $row['total'];
-        $domain->fixed = $row['fixed'];
-        $domain->time = $row['time'];
-        $domain->average_time = $row['average_time'];
-        $domain->percentage_fixed = $row['percentage_fixed'];
-        $domain->types = (array)json_decode($row['types']);
-        $domain->to_update = false;
-        return $domain;
+    /**
+     * Returns all incidents that are unfixed
+     * @return array[] list of incidents
+     */
+    public function unfixed_incidents(){
+        
+        $res = $this->conn->query("SELECT id FROM incident WHERE fixeddate = '" . INVALID_DATE . "'");
+        return $res->fetch_all(MYSQLI_ASSOC);
     }
 
     /**
-     * Write a DomainData object to the database or update it
-     * @param DomainData 
+     * Writes an incident to the database or updates it
+     * @param array the incident data 
      */
     public function write_database($incident){
 
@@ -162,8 +143,7 @@ class DatabaseHandler{
 
     /**
      * Writes a bulk (of save_bulk_size) into the database
-     * @param DomainData[] 
-     * @return DomainData[] the updated list
+     * @param array[] a list of incidents
      */
     public function write_bulk($incident_list){
         foreach($incident_list as $incident){
@@ -173,13 +153,10 @@ class DatabaseHandler{
 
     /**
      * Returns the total average response time of all domains
-     * (With the waiting time for each incident seperately!)
      * @throws Exception if the result-set is null
      * @return int time in seconds
      */
     public function get_avg_time(){
-
-
 
         $res = $this->conn->query("SELECT AVG(time) FROM (" . $this->query_timediff . ") incident_time");
         if(NULL == $res or 0 == $res->num_rows){
@@ -197,9 +174,14 @@ class DatabaseHandler{
 
         $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")incident_time GROUP BY host ORDER BY AVG(time)";
         $res = $this->conn->query($query);
+        $date = INVALID_DATE;
+        #only domains that have every vulnerability fixed are considered 
+        $stmt = $this->conn->prepare("SELECT id FROM incident WHERE host = ?  AND fixeddate = ?");
         while(($host = $res->fetch_row()[1])){
-            #only domains that have every vulnerability fixed are considered 
-            if(NULL == $this->conn->query("SELECT * FROM incident WHERE host = '" . $host . "' AND fixeddate = '". INVALID_DATE . "'")->fetch_row()){
+            $stmt->bind_param("ss",$host,$date);
+            $stmt->execute();
+            $res_check = $stmt->get_result();
+            if(NULL == $res_check->fetch_row()){
                 return $this->get_domain($host);
             }
         }
@@ -221,8 +203,8 @@ class DatabaseHandler{
     /**
      * Returns the rank of a given domain (1 = best , 0 = worst)
      * @param string the domain name
-     * @throws Exception if the result-set is null
-     * @throws Exception if $domain is not provided
+     * @throws NoResultException if the result-set is null
+     * @throws NoResultException if $domain is not provided
      * @return float a number between 0 and 1
      */
     public function get_rank($domain){
@@ -242,14 +224,16 @@ class DatabaseHandler{
 
         $query = "SELECT COUNT(host) 
                   FROM (" . $prepared_table . ")prepared_table
-                  WHERE avg_time > (SELECT avg_time FROM ( " . $prepared_table . ")prepared_table WHERE host = '" . $domain . "')"; 
-        $res = $this->conn->query($query);
+                  WHERE avg_time > (SELECT avg_time FROM ( " . $prepared_table . ")prepared_table WHERE host = ?)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bind_param("s",$domain);
+        $stmt->execute();
+        $res = $stmt->get_result();
         $number_worse_domains = $res->fetch_row()[0];
         if(NULL == $number_worse_domains){
            throw new NoResultException(); 
         }
         return $number_worse_domains / $total_number_domains;
-            
     }
 }
 ?>

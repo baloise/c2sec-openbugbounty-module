@@ -33,14 +33,14 @@ class DomainData {
 
     /**
      * Validates the input.
-     * @param SimpleXMLElement $item
-     * @throws XMLFormatException if the XML structure is different than expected
+     * @param array $item
+     * @throws OutofBoundsException
      */
     public function validate($item){
 
         foreach($this->list_values as $entry){
             if(!isset($item,$entry)){
-                throw new XMLFormatException($entry);
+                throw new \OutofBoundsException($entry);
             }
         }
     }
@@ -48,7 +48,7 @@ class DomainData {
 
     /**
      * Adds new incident to the object.
-     * @param Databas row $item
+     * @param array $item
      */   
     public function add($item){
       
@@ -67,7 +67,7 @@ class DomainData {
     }
 
     /**
-     * When all incidents are added,
+     * When all incidents are added, calculating the average time.
      * If the data cannot be processed (e.g. total is zero) nothing happens.
      */   
     public function sumUp(){
