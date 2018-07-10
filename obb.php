@@ -191,6 +191,7 @@ class Obb {
             array_push($incidents,$res->children()[0]);
             if($bulk_counter >= $this->save_bulk_size){
                 $this->database_handler->write_bulk($incidents);
+                $this->update_incident_index($counter);
                 $incidents = array();
                 $bulk_counter = 0;
             }

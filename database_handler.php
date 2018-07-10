@@ -20,15 +20,19 @@ class DatabaseHandler{
      */
     private $conn;
 
-
-    private $invalid_date = '1970-01-01';
-
-
-    public $query_timediff = "SELECT (
-                                IF( fixeddate = '1970-01-01', 
+    public $query_timediff = "SELECT  
+                                id,
+                                host,
+                                report,
+                                IF(fixeddate = '" . INVALID_DATE . "', 
                                     UNIX_TIMESTAMP(NOW()),
                                     UNIX_TIMESTAMP(fixeddate))
-                                - UNIX_TIMESTAMP(reporteddate)) AS time,host FROM incident";
+                                - UNIX_TIMESTAMP(reporteddate) AS time,
+                                type,
+                                IF (fixeddate = '" . INVALID_DATE . "',
+                                    false,
+                                    true) AS fixed
+                                FROM incident";
 
     public function __construct($server,$user,$pass,$db){
     
@@ -45,8 +49,8 @@ class DatabaseHandler{
                                     (id INT,
                                     host VARCHAR(100),
                                     report LONGTEXT,
-                                    reporteddate DATE, 
-                                    fixeddate DATE,
+                                    reporteddate DATETIME, 
+                                    fixeddate DATETIME,
                                     type TEXT,
                                     PRIMARY KEY(id))");
     }    
@@ -58,7 +62,7 @@ class DatabaseHandler{
     public function load_domain_data(){
 
         $domain_list = array();
-        $res = $this->conn->query("SELECT * FROM incidents");
+        $res = $this->conn->query("SELECT * FROM (" . $query_timediff . ")incident_time");
         while(($row = $res->fetch_assoc())){
             $host = $row['host'];
             if(NULL == $domain_list[$host]){
@@ -84,7 +88,7 @@ class DatabaseHandler{
             throw new \Exception("domain is empty");
         }
         $res = array();
-        $stmt = $this->conn->prepare("SELECT * FROM incident WHERE host = ?");
+        $stmt = $this->conn->prepare("SELECT * FROM (" . $this->query_timediff . ")incident_time  WHERE host = ?");
         $stmt->bind_param("s",$host);
         if(!$stmt->execute()){
             throw new \Exception("No domain " . $host . " found");
@@ -130,23 +134,24 @@ class DatabaseHandler{
     public function write_database($incident){
 
         $reporteddate = new \DateTime($incident->reporteddate);
-        $reporteddate = $reporteddate->format('Y-m-d H:i:s');
-
+        
         if(1 == $incident->fixed){
             $fixeddate = new \DateTime($incident->fixeddate);
-            $fixeddate = $fixeddate->format('Y-m-d H:i:s');
+            if($incident->fixeddate < $incident->reporteddate){
+                echo "Fixeddate was set incorrectly";
+                return;
+            }
         }else{
             #Since comparing with NULL does not work in SQL IF Statement
-            $fixeddate = new \DateTime();
-            $fixeddate = $fixeddate->format($this->invalid_date);
+            $fixeddate = new \DateTime(INVALID_DATE);
         }
 
         $stmt = $this->conn->prepare("REPLACE INTO incident (id,host,report,reporteddate,fixeddate,type) VALUES (?,?,?,?,?,?)");
         $stmt->bind_param("isssss",get_id($incident->url),
                                     $incident->host,
                                     $incident->url,
-                                    $reporteddate,
-                                    $fixeddate,
+                                    $reporteddate->format('Y-m-d H:i:s'),
+                                    $fixeddate->format('Y-m-d H:i:s'),
                                     $incident->type);
         $res = $stmt->execute();
         $stmt->close();
@@ -193,7 +198,7 @@ class DatabaseHandler{
         $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")host_time GROUP BY host ORDER BY AVG(time)";
         $res = $this->conn->query($query);
         while(($host = $res->fetch_row()[1])){
-           if(NULL == $this->conn->query("SELECT * FROM incident WHERE host = '" . $host . "' AND fixeddate = '". $this->invalid_date . "'")->fetch_row()){
+           if(NULL == $this->conn->query("SELECT * FROM incident WHERE host = '" . $host . "' AND fixeddate = '". INVALID_DATE . "'")->fetch_row()){
                 return $this->get_domain($host);
            }
         }

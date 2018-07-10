@@ -24,8 +24,7 @@ class DomainData {
     public $percentage_fixed = 0.0;
     public $types = array();
 
-    #XML childnodes that are relevant. array is used to check the response in case the API was changed.
-    private $list_values = ['host','url','type','reporteddate','fixed','fixeddate'];
+    private $list_values = ['host','report','time','type','fixed'];
 
 
     public function __construct($host){
@@ -50,38 +49,21 @@ class DomainData {
     /**
      * Adds new incident to the object.
      * @param Databas row $item
-     * @return int -2 if the dates are corrupt, -1 if the incident is a duplicate, 0 in case of success
      */   
     public function add($item){
       
         $this->validate($item);
 
+        array_push($this->types,$item['type']);
+        array_push($this->reports,$item['report']);
 
         $this->total += 1;
-        array_push($this->types,$item["type"]);
-        array_push($this->reports,$item["report"]);
-        $diff = 0;
-        try{
-            $reporteddate = new \DateTime($item["reporteddate"]);
 
-            if(NULL != $item["fixeddate"]){
-            
-                $fixeddate = new \DateTime($item["fixeddate"]);
-                $diff = $fixeddate->getTimestamp() - $reporteddate->getTimestamp();
-                if($diff < 0){
-                    return;
-                }
-                $this->fixed += 1;
-            }else{
-                $now = new \Datetime();
-                $diff = $now->getTimestamp() - $reporteddate->getTimestamp();
-            }
-        }catch(\Exception $e){
-            echo $e;
-            return;
+        if(1 == $item['fixed']){
+            $this->fixed += 1;
         }
 
-        $this->time += $diff;
+        $this->time += $item['time'];
     }
 
     /**
