@@ -39,11 +39,6 @@ class Obb {
 
 
     /**
-     * path to file containing all incident ids that need checking (if the incident got fixed)
-     */
-    private $to_update_file;
-
-    /**
      * Database object
      */
     private $database_handler;
@@ -60,10 +55,9 @@ class Obb {
  
         if(NULL == $this->incident_index){
             #TODO: implement logging
-            echo "Incident index not found in obb.ini, setting to 0.";
-            $this->incident_index = 0;
+            echo "Incident index not found in obb.ini, setting to 48011. (First entry)";
+            $this->incident_index = 48011;
         }
-        $this->to_update_file = "./.to_update_file";
 
         $server = $config["db_server"];
         $user = $config["db_user"]; 
@@ -92,7 +86,6 @@ class Obb {
         $url = $this->base_url . $domain;
         $xml = $this->get_response($url);
         $domain_data = $this->process_incidents($xml);
-        $this->database_handler->write_database($domain_data);
         if($obj){
             return $domain_data;
         }
@@ -116,12 +109,14 @@ class Obb {
         if(!isset($xml->children()[0]->host)){
             throw new XMLFormatException('host');
         }
-        $domain_data = new DomainData($xml->children()[0]->host);
+
+        $host = $xml->children()[0]->host;
 
         foreach($xml->children() as $item){
-            $domain_data->add($item); 
+            $this->database_handler->write_database($item);
         }
-        $domain_data->sumUp();
+        #TODO: change the format without first writing and reading from the database
+        $domain_data = $this->database_handler->get_domain($host);
         return $domain_data;
     }
 
@@ -172,57 +167,17 @@ class Obb {
     }
 
     /**
-     * Returns a list von DomainData Objects, each for a different domain.
-     * Iterating through all incidents
+     * Fetches all new incidents from openbugbounty
      * THIS MIGHT TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
-     * @param boolean $fetch if false only data from the database will be returned
-     * @return DomainData[] List of all domains 
      */
-    public function get_all_domains($fetch = true){
-    
-        #load all domaindata object from database
-        $domain_list = $this->database_handler->load_domain_data();
+    public function fetch_domains(){
+
         #keeping track of when we need to save the data to the drive
         $bulk_counter = 0;
 
-        if(!$fetch){
-            return $domain_list;
-        }
-        
-        #check list of unfixed incident 
-        #if the status changed: update DomainData object, remove entry from list
-        $update_file_handle = fopen($this->to_update_file,'r');
-        $update_file_handle_new = fopen($this->to_update_file . "~",'w+');
-        if($update_file_handle){
-            while(($line = fgets($update_file_handle))){
-                $id = (int)$line;
-                try{
-                    $res = $this->get_response($this->id_url . $id);
-                }catch(NoResultException $e){
-                    continue;
-                }
-                $host = (string)$res->children()[0]->host;
-                #It is possible that we have marked some domains for update, even though we have not saved them
-                #(when we terminate the run between bulk writes) 
-                #so we ignore them just for now, they will be written back later
-                if(NULL == $domain_list[$host]){
-                    continue;
-                }
-                if(1 == $res->children()[0]->fixed){
-                    $domain_list[$host]->add($res->children()[0]);
-                }else{
-                    fwrite($update_file_handle_new,$line);
-                }
-            }
-            fclose($update_file_handle_new);
-            fclose($update_file_handle);
-            unlink($this->to_update_file);
-            rename($this->to_update_file . "~", $this->to_update_file);
-        }
-        #get all new ones
-        $update_file_handle = fopen($this->to_update_file,'a');
         $counter = $this->incident_index;
         $latest_id = $this->get_latest_reportID();
+        $incidents = array();
         for(;$counter < $latest_id;$counter++){
             sleep(1);  #for safety
             $bulk_counter++;
@@ -233,26 +188,49 @@ class Obb {
             }catch (NoResultException $e){
                 continue;
             }
-            $host = (string)$res->children()[0]->host;
-            if(NULL == $domain_list[$host]){
-                $domain_list[$host] = new DomainData($host);
-            }
-            $domain_list[$host]->add($res->children()[0]);
-            #if an unfixed incident, write it to the list
-            if(0 == $res->children()[0]->fixed){
-               fwrite($update_file_handle,$counter . "\n"); 
-            }
+            array_push($incidents,$res->children()[0]);
             if($bulk_counter >= $this->save_bulk_size){
-                $domain_list = $this->database_handler->write_bulk($domain_list);
+                $this->database_handler->write_bulk($incidents);
                 $this->update_incident_index($counter);
+                $incidents = array();
                 $bulk_counter = 0;
             }
         }
-        fclose($update_file_handle);
-
-        #sum everyone up, with to_update flag, and write to database
         $this->update_incident_index($latest_id);
-        $domain_list = $this->database_handler->write_bulk($domain_list);
+    }
+
+    /**
+     *  Goes through all unresolved incidents, checks them and updates the database if necessary
+     */
+    public function check_unfixed_domains(){
+
+        # update_file is not needed anymore, just query all incidents with fixeddate = NULL
+        $unfixed_incidents = $this->database_handler->unfixed_incidents();
+        foreach($unfixed_incidents as $incident){
+            sleep(1);
+            try{
+                $res = $this->get_response($this->id_url . (int)$incident["id"]);
+            }catch(\Exception $e){
+                continue; 
+            }
+            if(1 == $res->children()[0]->fixed){
+                $this->database_handler->write_database($res); 
+            }
+        }
+    }
+
+    /**
+     * Returns a list von DomainData Objects, each for a different domain.
+     * @param boolean $fetch if false only data from the database will be returned
+     * @return DomainData[] List of all domains 
+     */
+    public function get_all_domains($fetch = true){
+
+        $this->check_unfixed_domains();
+        if($fetch){
+            $this->fetch_domains();
+        }
+        $domain_list = $this->database_handler->load_domain_data();
         return $domain_list;
     }
 
@@ -281,35 +259,36 @@ class Obb {
 
     /**
      * Returns the average time of all (recorded) incidents in seconds.
-     * @return float time in seconds
+     * @return JSON time in seconds
      */
     public function get_avg_time(){
-        return $this->database_handler->get_avg_time();
+        return json_encode(array("total_average_time"=>$this->database_handler->get_avg_time()));
     }
 
     /**
      * Returns the domain with the absolute minimum average response time.
-     * @return DomainData
+     * @return JSON domain data
      */
-    public function get_best(){
-        return $this->database_handler->get_best();    
+    public function get_best_domain(){
+        return json_encode($this->database_handler->get_best());
     }
 
     /**
      * Returns the domain with the absolute maximum response time. 
-     * @return DomainData
+     * @return JSON domain data
      */
-    public function get_worst(){
-        return $this->database_handler->get_worst();
+    public function get_worst_domain(){
+        return json_encode($this->database_handler->get_worst());
     }
     
     /**
      * This will return the ranking the given domain in comparison to all others.
-     * Returns 0 to 1. 1.0 = best response time, 0.0 = worst response time
      * If the domain has no average time at all (no fixes ever) the result will be 0
+     * @param string the domain name
+     * @return JSON (number between 0 and 1)
      */
     public function get_rank($domain){
-        return $this->database_handler->get_rank($domain);
+        return json_encode(array("rank"=>$this->database_handler->get_rank($domain)));
     }
 }
 ?>

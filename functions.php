@@ -8,6 +8,7 @@ namespace obb;
 
 define('URL_SPLIT_LENGTH',6);
 define('CONFIG','./obb.ini');
+define('INVALID_DATE','1970-01-01 00:00:01');
 
 /**
  * Returns json encoded error message
@@ -16,21 +17,6 @@ define('CONFIG','./obb.ini');
  */
 function error($msg){
     return json_encode(array("ERROR"=>$msg));
-}
-
-/**
- * Returns the attribute 'attribute' from each object in one array
- * @param array $array
- * @param string $attribute
- * @return array or NULL if the input is invalid
- * UNUSED RIGHT NOW
- */
-function extract_attribute($array,$attribute){
-
-    if(0 == sizeof($array)){
-        return NULL;
-    }
-    return array_map(function($o) use ($attribute){return $o->{$attribute};}, $array); 
 }
 
 /**

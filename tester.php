@@ -6,9 +6,19 @@
     echo "\nGetting report on: " . $argv[1] . "\n\n";
     echo $obb->report($argv[1]);
 
-    echo "\n\nPopulating/updating database\n\n";
-    $obb->get_all_domains();
+    echo "\n\nBest domain:\n\n";
+    echo $obb->get_best_domain();
 
+    echo "\n\nWorst domain:\n\n";
+    echo $obb->get_worst_domain();
+
+    echo "\n\nAverage time:\n\n";
+    echo $obb->get_avg_time();
+    echo "\n\n";
+    
     echo "\n\nRanking of: " . $argv[1] . "\n\n";
-    echo $obb->get_rank($argv[1]);
+    echo $obb->get_rank($argv[1]) . "\n\n";
+    
+
+
 ?>
