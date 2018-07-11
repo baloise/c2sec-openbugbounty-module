@@ -44,6 +44,10 @@ class Obb {
     private $database_handler;
 
 
+
+    private $syslog_facility;
+
+
     /**
      * number of retries if the connection cannot be established
      */
@@ -58,10 +62,13 @@ class Obb {
     public function __construct(){
         $config = parse_ini_file(CONFIG);
         $this->incident_index = $config["incident_index"];
- 
+
+        ini_set("display_errors",'0');
+
+        $syslog_facility = $config["log_local_facility"] or '0';
+
         if(NULL == $this->incident_index){
-            #TODO: implement logging
-            echo "Incident index not found in obb.ini, setting to 48011. (First entry)";
+            syslog(LOG_NOTICE|'LOG_LOCAL' . $this->syslog_facility, "Incident index not found in obb.ini, setting to 48011. (First entry)");
             $this->incident_index = 48011;
         }
 
@@ -69,6 +76,7 @@ class Obb {
         $user = $config["db_user"]; 
         $pass = $config["db_pass"];
         $db = $config["database"];
+
         
         $this->database_handler = new DatabaseHandler($server,$user,$pass,$db);       
     }
@@ -148,6 +156,7 @@ class Obb {
                     throw new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]);
                 }
                 sleep(10);
+                syslog(LOG_WARNING|'LOG_LOCAL' . $this->syslog_facility,"Trying to connect ... " . $counter . "/" . $this->number_connection_retries);
             }else{
                 curl_close($curl);
                 break;
@@ -196,8 +205,6 @@ class Obb {
         for(;$counter < $latest_id;$counter++){
             sleep(1);  #for safety
             $bulk_counter++;
-            #output for now
-            echo $counter . "/" . $latest_id . "\n";
             try{
                 $res = $this->get_response($this->id_url . $counter);
             }catch (NoResultException $e){
@@ -205,6 +212,7 @@ class Obb {
             }
             array_push($incidents,$res->children()[0]);
             if($bulk_counter >= $this->save_bulk_size){
+                syslog(LOG_INFO|'LOG_LOCAL' . $this->syslog_facility,"Fetching incident :" . $counter . "/" . $latest_id);
                 $this->database_handler->write_bulk($incidents);
                 $this->update_incident_index($counter);
                 $incidents = array();
