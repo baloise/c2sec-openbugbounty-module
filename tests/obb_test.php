@@ -13,6 +13,7 @@ final class ObbTest extends TestCase{
 
     public function setUp(){
         $this->obb = new Obb\Obb();
+        sleep(1);
     }   
 
     public function test_report_success1(){
@@ -28,7 +29,6 @@ final class ObbTest extends TestCase{
         $this->assertArrayHasKey('average_time',$report);
         $this->assertArrayHasKey('percentage_fixed',$report);
         $this->assertArrayHasKey('types',$report);
-        $this->assertArrayHasKey('to_update',$report);
     }
 
     public function test_report_success2(){
