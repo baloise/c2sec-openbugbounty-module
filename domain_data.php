@@ -24,7 +24,7 @@ class DomainData {
     public $percentage_fixed = 0.0;
     public $types = array();
 
-    private $list_values = ['host','report','time','type','fixed'];
+    private $database_values = ['host','report','time','type','fixed'];
 
 
     public function __construct($host){
@@ -32,13 +32,13 @@ class DomainData {
     }
 
     /**
-     * Validates the input.
+     * Validates the inputformat given from the database.
      * @param array $item
      * @throws OutofBoundsException
      */
     public function validate($item){
 
-        foreach($this->list_values as $entry){
+        foreach($this->database_values as $entry){
             if(!isset($item,$entry)){
                 throw new \OutofBoundsException($entry);
             }

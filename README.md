@@ -39,7 +39,8 @@ obb can give you
 * the average response time for all domains
 * the worst and best performing domains
 
-If the domain has not fixed any vulnerabilies yet, the ranking will return a zero.  
+Only a domain with no current vulnerabilites can be a candidate for 'best'. 
+The total time-to-fix is summed up for each incident individually. (So if there are 10 incidents on one day it counts as 10 days)    
 The data for these metrics are coming from the database. In order to use them, you first have to populate your database.
 
 

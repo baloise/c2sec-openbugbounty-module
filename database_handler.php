@@ -20,6 +20,11 @@ class DatabaseHandler{
      */
     private $conn;
 
+    /**
+     * This query prepares the data of the incidents for the DomainData. 
+     * Transforms each row for incidents into
+     * id | host | report(url) | time (between fix and report or now and report) | fixed (true or false)
+     */
     public $query_timediff = "SELECT  
                                 id,
                                 host,
@@ -33,6 +38,10 @@ class DatabaseHandler{
                                     false,
                                     true) AS fixed
                                 FROM incident";
+
+
+    private $xml_nodes = ['url','host','type','reporteddate','fixeddate'];
+
 
     public function __construct($server,$user,$pass,$db){
     
@@ -79,6 +88,7 @@ class DatabaseHandler{
      * @return DomainData
      */
     public function get_domain($host){
+
         if(NULL == $host){
             throw new \Exception("domain is empty");
         }
@@ -108,17 +118,35 @@ class DatabaseHandler{
         return $res->fetch_all(MYSQLI_ASSOC);
     }
 
+
+    /**
+     * Validates the XML input from the openbugbounty API
+     * @param SimpleXMLElement 
+     * @throws XMLFormatException
+     */
+    private function validate($incident){
+
+        foreach($this->xml_nodes as $entry){
+            if(!isset($incident->$entry)){
+                throw new XMLFormatException("Node " . $entry . " is missing");
+            }
+        }
+    }
+
     /**
      * Writes an incident to the database or updates it
+     * If the fixeddate was set wrong in the report, the report is ignored
      * @param array the incident data 
      */
     public function write_database($incident){
+
+        $this->validate($incident);
 
         $reporteddate = new \DateTime($incident->reporteddate);
         
         if(1 == $incident->fixed){
             $fixeddate = new \DateTime($incident->fixeddate);
-            if($incident->fixeddate < $incident->reporteddate){
+            if($fixeddate < $reporteddate){
                 echo "Fixeddate was set incorrectly";
                 return;
             }
@@ -146,6 +174,7 @@ class DatabaseHandler{
      * @param array[] a list of incidents
      */
     public function write_bulk($incident_list){
+
         foreach($incident_list as $incident){
                 $this->write_database($incident);
             }
@@ -158,7 +187,7 @@ class DatabaseHandler{
      */
     public function get_avg_time(){
 
-        $res = $this->conn->query("SELECT AVG(time) FROM (" . $this->query_timediff . ") incident_time");
+        $res = $this->conn->query("SELECT AVG(time) FROM (" . $this->query_timediff . ")incident_time");
         if(NULL == $res or 0 == $res->num_rows){
             throw new \Exception("Database is empty");
         }
@@ -175,7 +204,6 @@ class DatabaseHandler{
         $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")incident_time GROUP BY host ORDER BY AVG(time)";
         $res = $this->conn->query($query);
         $date = INVALID_DATE;
-        #only domains that have every vulnerability fixed are considered 
         $stmt = $this->conn->prepare("SELECT id FROM incident WHERE host = ?  AND fixeddate = ?");
         while(($host = $res->fetch_row()[1])){
             $stmt->bind_param("ss",$host,$date);
@@ -185,6 +213,7 @@ class DatabaseHandler{
                 return $this->get_domain($host);
             }
         }
+        throw new NoResultException("The database seems to be empty");
     }
 
     /**
@@ -212,12 +241,10 @@ class DatabaseHandler{
         if(NULL == $domain){
             throw new NoResultException("No searchterm provided");
         } 
-
         $total_number_domains = $this->conn->query("SELECT COUNT(DISTINCT host) FROM incident")->fetch_row()[0];
         if(0 == $total_number_domains or NULL == $total_number_domains){
             throw new NoResultException("The database seems to be empty");
         }
-
         $prepared_table = "SELECT AVG(time) AS avg_time ,host 
                             FROM (" . $this->query_timediff . ")incident_time 
                             GROUP BY host ORDER BY AVG(time)";
@@ -230,9 +257,6 @@ class DatabaseHandler{
         $stmt->execute();
         $res = $stmt->get_result();
         $number_worse_domains = $res->fetch_row()[0];
-        if(NULL == $number_worse_domains){
-           throw new NoResultException(); 
-        }
         return $number_worse_domains / $total_number_domains;
     }
 }
