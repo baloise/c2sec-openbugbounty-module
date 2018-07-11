@@ -43,6 +43,12 @@ class Obb {
      */
     private $database_handler;
 
+
+    /**
+     * number of retries if the connection cannot be established
+     */
+    private $number_connection_retries = 10;
+
     /**
      * The constructor of an obb instance. 
      * All initial setup and configuration will happen here.
@@ -129,14 +135,23 @@ class Obb {
      */
     private function get_response($url){
         
-        $curl_options = array(CURLOPT_URL => $url, CURLOPT_RETURNTRANSFER => 1);
+        $curl_options = array(CURLOPT_URL => $url, CURLOPT_RETURNTRANSFER => 1, CURLOPT_CONNECTTIMEOUT => 10);
+        $counter = 0;
         $curl = curl_init();
         curl_setopt_array($curl,$curl_options);
-        $res = curl_exec($curl);
-        $status = curl_getinfo($curl);
-        curl_close($curl);
-        if(200 != $status["http_code"]){
-            throw new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]);
+        while(true){
+            $res = curl_exec($curl);
+            $status = curl_getinfo($curl);
+            if(200 != $status["http_code"]){
+                $counter++;
+                if($counter >= $this->number_connection_retries){
+                    throw new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]);
+                }
+                sleep(10);
+            }else{
+                curl_close($curl);
+                break;
+            }
         }
         if(0 == strlen($res)){
             throw new NoResultException("Empty response");
