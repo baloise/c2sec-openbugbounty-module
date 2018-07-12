@@ -6,6 +6,7 @@
  */
 namespace obb;
 
+define('NAME','OBB Module');
 define('URL_SPLIT_LENGTH',6);
 define('CONFIG','./obb.ini');
 define('INVALID_DATE','1970-01-01 00:00:01');

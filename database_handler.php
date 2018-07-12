@@ -51,7 +51,7 @@ class DatabaseHandler{
 
         $res = $this->conn->query("CREATE TABLE IF NOT EXISTS incident 
                                     (id INT,
-                                    host VARCHAR(100),
+                                    host VARCHAR(150),
                                     report LONGTEXT,
                                     reporteddate DATETIME, 
                                     fixeddate DATETIME,

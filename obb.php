@@ -44,8 +44,10 @@ class Obb {
     private $database_handler;
 
 
-
-    private $syslog_facility;
+    /**
+     * Rsyslog facility to save logs
+     */
+    private $syslog_facility = '0';
 
 
     /**
@@ -65,10 +67,15 @@ class Obb {
 
         ini_set("display_errors",'0');
 
-        $syslog_facility = $config["log_local_facility"] or '0';
+        if($config["log_local_facility"] >= 0 and $config["log_local_facility"] <= 7){
+            $syslog_facility = $config["log_local_facility"];
+        }
+
+        openlog($ident=NAME,$options = NULL,$facility=constant('LOG_LOCAL' . $syslog_facility));
+        echo "Using rsyslog faciltiy: local" . $syslog_facility . "\n";
 
         if(NULL == $this->incident_index){
-            syslog(LOG_NOTICE|'LOG_LOCAL' . $this->syslog_facility, "Incident index not found in obb.ini, setting to 48011. (First entry)");
+            syslog(LOG_NOTICE, "Incident index not found in obb.ini, setting to 48011. (First entry)");
             $this->incident_index = 48011;
         }
 
@@ -79,6 +86,12 @@ class Obb {
 
         
         $this->database_handler = new DatabaseHandler($server,$user,$pass,$db);       
+    }
+
+
+    public function __destruct(){
+        syslog(LOG_NOTICE, "Exiting " . NAME . " now");
+        closelog();
     }
 
     /**
@@ -156,7 +169,7 @@ class Obb {
                     throw new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]);
                 }
                 sleep(10);
-                syslog(LOG_WARNING|'LOG_LOCAL' . $this->syslog_facility,"Trying to connect ... " . $counter . "/" . $this->number_connection_retries);
+                syslog(LOG_WARNING,"Trying to connect ... " . $counter . "/" . $this->number_connection_retries);
             }else{
                 curl_close($curl);
                 break;
@@ -212,7 +225,7 @@ class Obb {
             }
             array_push($incidents,$res->children()[0]);
             if($bulk_counter >= $this->save_bulk_size){
-                syslog(LOG_INFO|'LOG_LOCAL' . $this->syslog_facility,"Fetching incident :" . $counter . "/" . $latest_id);
+                syslog(LOG_INFO,"Saving incidents :" . $counter . "/" . $latest_id);
                 $this->database_handler->write_bulk($incidents);
                 $this->update_incident_index($counter);
                 $incidents = array();
@@ -285,6 +298,7 @@ class Obb {
      * @return JSON time in seconds
      */
     public function get_avg_time(){
+        syslog(LOG_INFO,"Querying average time");
         return json_encode(array("total_average_time"=>$this->database_handler->get_avg_time()));
     }
 
@@ -293,6 +307,7 @@ class Obb {
      * @return JSON domain data
      */
     public function get_best_domain(){
+        syslog(LOG_INFO,"Querying best domain");
         return json_encode($this->database_handler->get_best());
     }
 
@@ -301,6 +316,7 @@ class Obb {
      * @return JSON domain data
      */
     public function get_worst_domain(){
+        syslog(LOG_INFO,"Querying worst domain");
         return json_encode($this->database_handler->get_worst());
     }
     
@@ -311,6 +327,7 @@ class Obb {
      * @return JSON (number between 0 and 1)
      */
     public function get_rank($domain){
+        syslog(LOG_INFO,"Querying rank of " . $domain);
         return json_encode(array("rank"=>$this->database_handler->get_rank($domain)));
     }
 }
