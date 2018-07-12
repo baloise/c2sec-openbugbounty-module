@@ -71,7 +71,7 @@ class Obb {
             $syslog_facility = $config["log_local_facility"];
         }
 
-        openlog($ident=NAME,$options = NULL,$facility=constant('LOG_LOCAL' . $syslog_facility));
+        openlog($ident=NAME,$options = LOG_PID,$facility=constant('LOG_LOCAL' . $syslog_facility));
         echo "Using rsyslog faciltiy: local" . $syslog_facility . "\n";
 
         if(NULL == $this->incident_index){
@@ -163,13 +163,15 @@ class Obb {
         while(true){
             $res = curl_exec($curl);
             $status = curl_getinfo($curl);
-            if(200 != $status["http_code"]){
+            if(0 == $status["http_code"]){
                 $counter++;
                 if($counter >= $this->number_connection_retries){
                     throw new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]);
                 }
                 sleep(10);
                 syslog(LOG_WARNING,"Trying to connect ... " . $counter . "/" . $this->number_connection_retries);
+            }else if(200 != $status["http_code"]){
+                throw new ConnectionException("Status Code " . $status["http_code"]);
             }else{
                 curl_close($curl);
                 break;
