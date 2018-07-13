@@ -57,7 +57,12 @@ class DatabaseHandler{
                                     fixeddate DATETIME,
                                     type TEXT,
                                     PRIMARY KEY(id))");
-    }    
+    } 
+
+
+    public function __destruct(){
+        $this->conn->close();
+    }   
 
     /**
      * Loads all data from the database into an array of DomainData

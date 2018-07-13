@@ -95,7 +95,6 @@ class Obb {
     public function __destruct(){
         syslog(LOG_NOTICE, "Exiting " . NAME . " now");
         closelog();
-        $this->database_handler->close();
     }
 
     /**
