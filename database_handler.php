@@ -147,7 +147,7 @@ class DatabaseHandler{
         if(1 == $incident->fixed){
             $fixeddate = new \DateTime($incident->fixeddate);
             if($fixeddate < $reporteddate){
-                echo "Fixeddate was set incorrectly";
+                syslog(LOG_WARNING,"Fixeddate was set incorrectly for ID " . get_id($incident->url));
                 return;
             }
         }else{
@@ -165,7 +165,7 @@ class DatabaseHandler{
         $res = $stmt->execute();
         $stmt->close();
         if(!$res){
-            echo "database write could not be performed";
+            syslog(LOG_WARNING,"database write could not be performed");
         }
     }
 

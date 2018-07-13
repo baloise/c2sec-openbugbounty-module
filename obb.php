@@ -67,6 +67,9 @@ class Obb {
 
         ini_set("display_errors",'0');
 
+        #to prevent memory leak, (source unknown right now)
+        ini_set("memory_limit", '500M');
+
         if($config["log_local_facility"] >= 0 and $config["log_local_facility"] <= 7){
             $syslog_facility = $config["log_local_facility"];
         }
@@ -92,6 +95,7 @@ class Obb {
     public function __destruct(){
         syslog(LOG_NOTICE, "Exiting " . NAME . " now");
         closelog();
+        $this->database_handler->close();
     }
 
     /**
