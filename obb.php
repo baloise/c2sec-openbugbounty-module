@@ -166,15 +166,13 @@ class Obb {
         while(true){
             $res = curl_exec($curl);
             $status = curl_getinfo($curl);
-            if(0 == $status["http_code"]){
+            if(200 != $status["http_code"]){
                 $counter++;
                 if($counter >= $this->number_connection_retries){
                     throw new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]);
                 }
                 sleep(10);
-                syslog(LOG_WARNING,"Trying to connect ... " . $counter . "/" . $this->number_connection_retries);
-            }else if(200 != $status["http_code"]){
-                throw new ConnectionException("Status Code " . $status["http_code"]);
+                syslog(LOG_WARNING,"Trying to connect ... status code: " . $status["http_code"] . "  " . $counter . "/" . $this->number_connection_retries);
             }else{
                 curl_close($curl);
                 break;
