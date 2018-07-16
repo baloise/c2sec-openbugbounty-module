@@ -95,13 +95,13 @@ class DatabaseHandler{
     public function get_domain($host){
 
         if(NULL == $host){
-            throw new \Exception("domain is empty");
+            handle_exception(new \Exception("domain is empty"));
         }
         $res = array();
         $stmt = $this->conn->prepare("SELECT * FROM (" . $this->query_timediff . ")incident_time  WHERE host = ?");
         $stmt->bind_param("s",$host);
         if(!$stmt->execute()){
-            throw new \Exception("No domain " . $host . " found");
+            handle_exception(new \Exception("No domain " . $host . " found"));
         }
         $res = $stmt->get_result();
         $domain_data = new DomainData($host);
@@ -133,7 +133,7 @@ class DatabaseHandler{
 
         foreach($this->xml_nodes as $entry){
             if(!isset($incident->$entry)){
-                throw new XMLFormatException("Node " . $entry . " is missing");
+                handle_exception(new XMLFormatException("Node " . $entry . " is missing"));
             }
         }
     }
@@ -194,7 +194,7 @@ class DatabaseHandler{
 
         $res = $this->conn->query("SELECT AVG(time) FROM (" . $this->query_timediff . ")incident_time");
         if(NULL == $res or 0 == $res->num_rows){
-            throw new \Exception("Database is empty");
+            handle_exception(new \Exception("Database is empty"));
         }
         return $res->fetch_row()[0];
     }
@@ -218,7 +218,7 @@ class DatabaseHandler{
                 return $this->get_domain($host);
             }
         }
-        throw new NoResultException("The database seems to be empty");
+        handle_exception(new NoResultException("The database seems to be empty"));
     }
 
     /**
@@ -244,11 +244,11 @@ class DatabaseHandler{
     public function get_rank($domain){
        
         if(NULL == $domain){
-            throw new NoResultException("No searchterm provided");
+            handle_exception(new NoResultException("No searchterm provided"));
         } 
         $total_number_domains = $this->conn->query("SELECT COUNT(DISTINCT host) FROM incident")->fetch_row()[0];
         if(0 == $total_number_domains or NULL == $total_number_domains){
-            throw new NoResultException("The database seems to be empty");
+            handle_exception(new NoResultException("The database seems to be empty"));
         }
         $prepared_table = "SELECT AVG(time) AS avg_time ,host 
                             FROM (" . $this->query_timediff . ")incident_time 

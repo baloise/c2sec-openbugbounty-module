@@ -121,7 +121,7 @@ class Obb {
         }
         $final_result = json_encode($domain_data);
         if(!$final_result){
-            throw new EncodingException("Could not encode the result");
+            handle_exception(new EncodingException("Could not encode the result"));
         }
         return $final_result;
     }
@@ -137,7 +137,7 @@ class Obb {
     private function process_incidents($xml){
 
         if(!isset($xml->children()[0]->host)){
-            throw new XMLFormatException('host');
+            handle_exception(new XMLFormatException('host'));
         }
 
         $host = $xml->children()[0]->host;
@@ -169,7 +169,7 @@ class Obb {
             if(200 != $status["http_code"]){
                 $counter++;
                 if($counter >= $this->number_connection_retries){
-                    throw new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]);
+                    handle_exception(new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]));
                 }
                 sleep(10);
                 syslog(LOG_WARNING,"Trying to connect ... status code: " . $status["http_code"] . "  " . $counter . "/" . $this->number_connection_retries);
@@ -179,11 +179,11 @@ class Obb {
             }
         }
         if(0 == strlen($res)){
-            throw new NoResultException("Empty response");
+            handle_exception(new NoResultException("Empty response"));
         }
         $xml = simplexml_load_string($res);
         if(NULL == $xml || 0 == count($xml->children())){
-            throw new NoResultException("The search gave no result");
+            handle_exception(new NoResultException("The search for " . $url . " gave no result"));
         }
         return $xml;
     }
@@ -200,7 +200,7 @@ class Obb {
             return $latest_reports;
         } 
         if(!isset($latest_reports->children()[0]->url)){
-            throw new XMLFormatException("XML Node 'url' is missing");
+            handle_exception(new XMLFormatException("XML Node 'url' is missing"));
         }
         $latest_id = get_id($latest_reports->children()[0]->url);
         return $latest_id;

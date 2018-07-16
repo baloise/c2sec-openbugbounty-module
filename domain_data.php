@@ -40,7 +40,7 @@ class DomainData {
 
         foreach($this->database_values as $entry){
             if(!isset($item,$entry)){
-                throw new \OutofBoundsException($entry);
+                handle_exception(new \OutofBoundsException($entry));
             }
         }
     }

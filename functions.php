@@ -40,6 +40,16 @@ function get_id($url){
 }
 
 /**
+ * log and throws excception
+ * @param Exception $exception
+ * @throws Exception
+ */
+function handle_exception($exception){
+    syslog(LOG_ERR,"EXCEPTION: " . $exception->getMessage());
+    throw $exception;
+}
+
+/**
  * Custom Exceptions:
  *
  *
