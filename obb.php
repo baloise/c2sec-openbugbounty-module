@@ -170,6 +170,7 @@ class Obb {
                 $counter++;
                 if($counter >= $this->number_connection_retries){
                     handle_exception(new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]));
+                    break;
                 }
                 sleep(10);
                 syslog(LOG_WARNING,"Trying to connect ... status code: " . $status["http_code"] . "  " . $counter . "/" . $this->number_connection_retries);
@@ -183,7 +184,7 @@ class Obb {
         }
         $xml = simplexml_load_string($res);
         if(NULL == $xml || 0 == count($xml->children())){
-            handle_exception(new NoResultException("The search for " . $url . " gave no result"));
+            handle_exception(new NoResultException("Query " . $url . " gave no result"));
         }
         return $xml;
     }
@@ -236,6 +237,7 @@ class Obb {
             }
         }
         $this->update_incident_index($latest_id);
+        $this->check_unfixed_domains();
     }
 
     /**

@@ -45,7 +45,7 @@ function get_id($url){
  * @throws Exception
  */
 function handle_exception($exception){
-    syslog(LOG_ERR,"EXCEPTION: " . $exception->getMessage());
+    syslog(LOG_ERR, get_class($exception) . " " . $exception->getMessage());
     throw $exception;
 }
 
