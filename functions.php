@@ -6,6 +6,7 @@
  */
 namespace obb;
 
+define('NAME','OBB Module');
 define('URL_SPLIT_LENGTH',6);
 define('CONFIG','./obb.ini');
 define('INVALID_DATE','1970-01-01 00:00:01');
@@ -36,6 +37,16 @@ function get_id($url){
         throw new FormatException("URL format seems to be false, ID is not a number: " . $id);
     }
     return $id;
+}
+
+/**
+ * log and throws excception
+ * @param Exception $exception
+ * @throws Exception
+ */
+function handle_exception($exception){
+    syslog(LOG_ERR, get_class($exception) . " " . $exception->getMessage());
+    throw $exception;
 }
 
 /**

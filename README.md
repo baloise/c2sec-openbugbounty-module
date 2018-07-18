@@ -14,7 +14,9 @@ To change it, you must edit the following line in `functions.php`:
 define('CONFIG','./obb.ini');
 ```
 The configuration contains the `incident_index`, which keeps track of wich incidents are already saved in the database.  
-To setup the database connection, change `db_server`,`db_user`,`db_pass` and `database`.  
+To setup the database connection, change `db_server`,`db_user`,`db_pass` and `database`.     
+
+obb uses rsyslog to write its logfiles. You can set the facility  with `log_local_facility`-entry in the configuration file.   
 
 ### Report
 

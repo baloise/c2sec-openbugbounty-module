@@ -43,6 +43,18 @@ class Obb {
      */
     private $database_handler;
 
+
+    /**
+     * Rsyslog facility to save logs
+     */
+    private $syslog_facility = '0';
+
+
+    /**
+     * number of retries if the connection cannot be established
+     */
+    private $number_connection_retries = 10;
+
     /**
      * The constructor of an obb instance. 
      * All initial setup and configuration will happen here.
@@ -52,10 +64,21 @@ class Obb {
     public function __construct(){
         $config = parse_ini_file(CONFIG);
         $this->incident_index = $config["incident_index"];
- 
+
+        ini_set("display_errors",'0');
+
+        #to prevent memory leak, (source unknown right now)
+        ini_set("memory_limit", '500M');
+
+        if($config["log_local_facility"] >= 0 and $config["log_local_facility"] <= 7){
+            $syslog_facility = $config["log_local_facility"];
+        }
+
+        openlog($ident=NAME,$options = LOG_PID,$facility=constant('LOG_LOCAL' . $syslog_facility));
+        echo "Using rsyslog faciltiy: local" . $syslog_facility . "\n";
+
         if(NULL == $this->incident_index){
-            #TODO: implement logging
-            echo "Incident index not found in obb.ini, setting to 48011. (First entry)";
+            syslog(LOG_NOTICE, "Incident index not found in obb.ini, setting to 48011. (First entry)");
             $this->incident_index = 48011;
         }
 
@@ -63,8 +86,15 @@ class Obb {
         $user = $config["db_user"]; 
         $pass = $config["db_pass"];
         $db = $config["database"];
+
         
         $this->database_handler = new DatabaseHandler($server,$user,$pass,$db);       
+    }
+
+
+    public function __destruct(){
+        syslog(LOG_NOTICE, "Exiting " . NAME . " now");
+        closelog();
     }
 
     /**
@@ -91,7 +121,7 @@ class Obb {
         }
         $final_result = json_encode($domain_data);
         if(!$final_result){
-            throw new EncodingException("Could not encode the result");
+            handle_exception(new EncodingException("Could not encode the result"));
         }
         return $final_result;
     }
@@ -107,7 +137,7 @@ class Obb {
     private function process_incidents($xml){
 
         if(!isset($xml->children()[0]->host)){
-            throw new XMLFormatException('host');
+            handle_exception(new XMLFormatException('host'));
         }
 
         $host = $xml->children()[0]->host;
@@ -129,21 +159,32 @@ class Obb {
      */
     private function get_response($url){
         
-        $curl_options = array(CURLOPT_URL => $url, CURLOPT_RETURNTRANSFER => 1);
+        $curl_options = array(CURLOPT_URL => $url, CURLOPT_RETURNTRANSFER => 1, CURLOPT_CONNECTTIMEOUT => 10);
+        $counter = 0;
         $curl = curl_init();
         curl_setopt_array($curl,$curl_options);
-        $res = curl_exec($curl);
-        $status = curl_getinfo($curl);
-        curl_close($curl);
-        if(200 != $status["http_code"]){
-            throw new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]);
+        while(true){
+            $res = curl_exec($curl);
+            $status = curl_getinfo($curl);
+            if(200 != $status["http_code"]){
+                $counter++;
+                if($counter >= $this->number_connection_retries){
+                    handle_exception(new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]));
+                    break;
+                }
+                sleep(10);
+                syslog(LOG_WARNING,"Trying to connect ... status code: " . $status["http_code"] . "  " . $counter . "/" . $this->number_connection_retries);
+            }else{
+                curl_close($curl);
+                break;
+            }
         }
         if(0 == strlen($res)){
-            throw new NoResultException("Empty response");
+            handle_exception(new NoResultException("Empty response"));
         }
         $xml = simplexml_load_string($res);
         if(NULL == $xml || 0 == count($xml->children())){
-            throw new NoResultException("The search gave no result");
+            handle_exception(new NoResultException("Query " . $url . " gave no result"));
         }
         return $xml;
     }
@@ -160,7 +201,7 @@ class Obb {
             return $latest_reports;
         } 
         if(!isset($latest_reports->children()[0]->url)){
-            throw new XMLFormatException("XML Node 'url' is missing");
+            handle_exception(new XMLFormatException("XML Node 'url' is missing"));
         }
         $latest_id = get_id($latest_reports->children()[0]->url);
         return $latest_id;
@@ -181,8 +222,6 @@ class Obb {
         for(;$counter < $latest_id;$counter++){
             sleep(1);  #for safety
             $bulk_counter++;
-            #output for now
-            echo $counter . "/" . $latest_id . "\n";
             try{
                 $res = $this->get_response($this->id_url . $counter);
             }catch (NoResultException $e){
@@ -190,6 +229,7 @@ class Obb {
             }
             array_push($incidents,$res->children()[0]);
             if($bulk_counter >= $this->save_bulk_size){
+                syslog(LOG_INFO,"Saving incidents :" . $counter . "/" . $latest_id);
                 $this->database_handler->write_bulk($incidents);
                 $this->update_incident_index($counter);
                 $incidents = array();
@@ -197,6 +237,7 @@ class Obb {
             }
         }
         $this->update_incident_index($latest_id);
+        $this->check_unfixed_domains();
     }
 
     /**
@@ -262,6 +303,7 @@ class Obb {
      * @return JSON time in seconds
      */
     public function get_avg_time(){
+        syslog(LOG_INFO,"Querying average time");
         return json_encode(array("total_average_time"=>$this->database_handler->get_avg_time()));
     }
 
@@ -270,6 +312,7 @@ class Obb {
      * @return JSON domain data
      */
     public function get_best_domain(){
+        syslog(LOG_INFO,"Querying best domain");
         return json_encode($this->database_handler->get_best());
     }
 
@@ -278,6 +321,7 @@ class Obb {
      * @return JSON domain data
      */
     public function get_worst_domain(){
+        syslog(LOG_INFO,"Querying worst domain");
         return json_encode($this->database_handler->get_worst());
     }
     
@@ -288,6 +332,7 @@ class Obb {
      * @return JSON (number between 0 and 1)
      */
     public function get_rank($domain){
+        syslog(LOG_INFO,"Querying rank of " . $domain);
         return json_encode(array("rank"=>$this->database_handler->get_rank($domain)));
     }
 }

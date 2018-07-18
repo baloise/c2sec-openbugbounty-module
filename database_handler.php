@@ -51,13 +51,18 @@ class DatabaseHandler{
 
         $res = $this->conn->query("CREATE TABLE IF NOT EXISTS incident 
                                     (id INT,
-                                    host VARCHAR(100),
+                                    host VARCHAR(150),
                                     report LONGTEXT,
                                     reporteddate DATETIME, 
                                     fixeddate DATETIME,
                                     type TEXT,
                                     PRIMARY KEY(id))");
-    }    
+    } 
+
+
+    public function __destruct(){
+        $this->conn->close();
+    }   
 
     /**
      * Loads all data from the database into an array of DomainData
@@ -90,13 +95,13 @@ class DatabaseHandler{
     public function get_domain($host){
 
         if(NULL == $host){
-            throw new \Exception("domain is empty");
+            handle_exception(new \Exception("domain is empty"));
         }
         $res = array();
         $stmt = $this->conn->prepare("SELECT * FROM (" . $this->query_timediff . ")incident_time  WHERE host = ?");
         $stmt->bind_param("s",$host);
         if(!$stmt->execute()){
-            throw new \Exception("No domain " . $host . " found");
+            handle_exception(new \Exception("No domain " . $host . " found"));
         }
         $res = $stmt->get_result();
         $domain_data = new DomainData($host);
@@ -128,7 +133,7 @@ class DatabaseHandler{
 
         foreach($this->xml_nodes as $entry){
             if(!isset($incident->$entry)){
-                throw new XMLFormatException("Node " . $entry . " is missing");
+                handle_exception(new XMLFormatException("Node " . $entry . " is missing"));
             }
         }
     }
@@ -147,7 +152,7 @@ class DatabaseHandler{
         if(1 == $incident->fixed){
             $fixeddate = new \DateTime($incident->fixeddate);
             if($fixeddate < $reporteddate){
-                echo "Fixeddate was set incorrectly";
+                syslog(LOG_WARNING,"Fixeddate was set incorrectly for ID " . get_id($incident->url));
                 return;
             }
         }else{
@@ -165,7 +170,7 @@ class DatabaseHandler{
         $res = $stmt->execute();
         $stmt->close();
         if(!$res){
-            echo "database write could not be performed";
+            syslog(LOG_WARNING,"database write could not be performed");
         }
     }
 
@@ -189,7 +194,7 @@ class DatabaseHandler{
 
         $res = $this->conn->query("SELECT AVG(time) FROM (" . $this->query_timediff . ")incident_time");
         if(NULL == $res or 0 == $res->num_rows){
-            throw new \Exception("Database is empty");
+            handle_exception(new \Exception("Database is empty"));
         }
         return $res->fetch_row()[0];
     }
@@ -213,7 +218,7 @@ class DatabaseHandler{
                 return $this->get_domain($host);
             }
         }
-        throw new NoResultException("The database seems to be empty");
+        handle_exception(new NoResultException("The database seems to be empty"));
     }
 
     /**
@@ -239,11 +244,11 @@ class DatabaseHandler{
     public function get_rank($domain){
        
         if(NULL == $domain){
-            throw new NoResultException("No searchterm provided");
+            handle_exception(new NoResultException("No searchterm provided"));
         } 
         $total_number_domains = $this->conn->query("SELECT COUNT(DISTINCT host) FROM incident")->fetch_row()[0];
         if(0 == $total_number_domains or NULL == $total_number_domains){
-            throw new NoResultException("The database seems to be empty");
+            handle_exception(new NoResultException("The database seems to be empty"));
         }
         $prepared_table = "SELECT AVG(time) AS avg_time ,host 
                             FROM (" . $this->query_timediff . ")incident_time 
