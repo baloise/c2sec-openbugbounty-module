@@ -2,23 +2,40 @@
 /**
  * OPENBUGBOUNTY C2SEC MODULE
  *
- * For generell functions, classes
+ * For general functions, exceptions, constants
  */
 namespace obb;
 
+/**
+ * Prepended to log entry
+ */
 define('NAME','OBB Module');
+
+/**
+ * Validation to retrieve the numerical id from the URL
+ */
 define('URL_SPLIT_LENGTH',6);
+
+/**
+ * Location of the configuration file
+ */
 define('CONFIG','./obb.ini');
+
+/**
+ * DateTime string which counts as an invalid / not-set date
+ */
 define('INVALID_DATE','1970-01-01 00:00:01');
 
 /**
- * Returns json encoded error message
- * @param string $msg
- * @return JSON-encoded string
+ * Number of entries which are saved at one to the database, when updating/populating it
  */
-function error($msg){
-    return json_encode(array("ERROR"=>$msg));
-}
+define('BULK_SIZE',50);
+
+/**
+ * Number of how often the connection is tried to established if it failed.
+ */
+define('CONNECTION_RETRIES',10);
+
 
 /**
  * Returns the ID from a given URL (openbugbounty API)
@@ -40,7 +57,7 @@ function get_id($url){
 }
 
 /**
- * log and throws excception
+ * Log and throws excception
  * @param Exception $exception
  * @throws Exception
  */

@@ -49,14 +49,13 @@ final class ObbTest extends TestCase{
     public function test_rank(){
         $domain = "google.com";
         
-        $rank = $this->obb->get_rank($domain);
-        #delta not supported for gt / lt assertions, so multiplying by 2
-        $this->assertGreaterThanOrEqual(0.0,$rank * 2); 
-        $this->assertLessThanOrEqual(1.0,$rank);
+        $rank = (array)json_decode($this->obb->get_rank($domain));
+        $this->assertGreaterThanOrEqual(0.0,$rank['rank']); 
+        $this->assertLessThanOrEqual(1.0,$rank['rank']);
     }
 
     public function test_rank_failure(){
-        $domain = "abc.abc.123";
+        $domain = "abc.abc.123.";
         $this->expectException(Obb\NoResultException::class);
         $rank = $this->obb->get_rank($domain);
     }

@@ -187,21 +187,21 @@ class DatabaseHandler{
 
     /**
      * Returns the total average response time of all domains
-     * @throws Exception if the result-set is null
+     * @throws NoResultException if the result-set is null
      * @return int time in seconds
      */
     public function get_avg_time(){
 
         $res = $this->conn->query("SELECT AVG(time) FROM (" . $this->query_timediff . ")incident_time");
         if(NULL == $res or 0 == $res->num_rows){
-            handle_exception(new \Exception("Database is empty"));
+            handle_exception(new NoResultException("The database seems to be empty"));
         }
         return $res->fetch_row()[0];
     }
 
     /**
      * Returns the domain with the minimum response time
-     * @throws Exception if the result-set is null
+     * @throws NoResultException if the result-set is null
      * @return DomainData
      */
     public function get_best(){
@@ -223,7 +223,7 @@ class DatabaseHandler{
 
     /**
      * Returns the domain with the maximum  response time
-     * @throws Exception if the result-set is null
+     * @throws NoResultException if the result-set is null
      * @return DomainData
      */
     public function get_worst(){

@@ -7,9 +7,6 @@
 namespace obb;
 
 
-require_once 'functions.php';
-
-
 /**
  * Class for accumulated data for the domain
  */

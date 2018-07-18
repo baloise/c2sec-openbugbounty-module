@@ -33,12 +33,6 @@ class Obb {
 
 
     /**
-     * How many entries of newly read Datasets are written to the database at once.  
-     */
-    private $save_bulk_size = 50;
-
-
-    /**
      * Database object
      */
     private $database_handler;
@@ -49,11 +43,6 @@ class Obb {
      */
     private $syslog_facility = '0';
 
-
-    /**
-     * number of retries if the connection cannot be established
-     */
-    private $number_connection_retries = 10;
 
     /**
      * The constructor of an obb instance. 
@@ -70,12 +59,15 @@ class Obb {
         #to prevent memory leak, (source unknown right now)
         ini_set("memory_limit", '500M');
 
-        if($config["log_local_facility"] >= 0 and $config["log_local_facility"] <= 7){
+        if(is_numeric($config["log_local_facility"]) and $config["log_local_facility"] >= 0 and $config["log_local_facility"] <= 7){
             $syslog_facility = $config["log_local_facility"];
         }
 
-        openlog($ident=NAME,$options = LOG_PID,$facility=constant('LOG_LOCAL' . $syslog_facility));
-        echo "Using rsyslog faciltiy: local" . $syslog_facility . "\n";
+        if(openlog($ident=NAME,$options = LOG_PID,$facility=constant('LOG_LOCAL' . $syslog_facility))){
+            echo "Using rsyslog faciltiy: local" . $syslog_facility . "\n";
+        }else{
+            echo "No logging\n";
+        }
 
         if(NULL == $this->incident_index){
             syslog(LOG_NOTICE, "Incident index not found in obb.ini, setting to 48011. (First entry)");
@@ -110,7 +102,7 @@ class Obb {
 
         #TODO Regex check for valid domain?
         if(NULL == $domain){
-            return error("No searchterm provided");
+            handle_exception(new \InvalidArgumentException("No searchterm provided"));
         }
 
         $url = $this->base_url . $domain;
@@ -168,12 +160,12 @@ class Obb {
             $status = curl_getinfo($curl);
             if(200 != $status["http_code"]){
                 $counter++;
-                if($counter >= $this->number_connection_retries){
+                if($counter >= CONNECTION_RETRIES){
                     handle_exception(new ConnectionException("Could not connect to openbugbounty.org: " . $status["http_code"]));
                     break;
                 }
                 sleep(10);
-                syslog(LOG_WARNING,"Trying to connect ... status code: " . $status["http_code"] . "  " . $counter . "/" . $this->number_connection_retries);
+                syslog(LOG_WARNING,"Trying to connect ... status code: " . $status["http_code"] . "  " . $counter . "/" . CONNECTION_RETRIES);
             }else{
                 curl_close($curl);
                 break;
@@ -228,7 +220,7 @@ class Obb {
                 continue;
             }
             array_push($incidents,$res->children()[0]);
-            if($bulk_counter >= $this->save_bulk_size){
+            if($bulk_counter >= BULK_SIZE){
                 syslog(LOG_INFO,"Saving incidents :" . $counter . "/" . $latest_id);
                 $this->database_handler->write_bulk($incidents);
                 $this->update_incident_index($counter);
@@ -241,7 +233,7 @@ class Obb {
     }
 
     /**
-     *  Goes through all unresolved incidents, checks them and updates the database if necessary
+     * Goes through all unresolved incidents, checks them and updates the database if necessary
      */
     public function check_unfixed_domains(){
 
@@ -277,13 +269,12 @@ class Obb {
 
 
     /**
-     * write to incident_index init file
-     * unpleasent solution, may require redo or import of pear Config_Lite
+     * Write to incident_index init file
      */
     private function update_incident_index($latest_id){
         $ini_handler = fopen(CONFIG,'r');
         $ini_handler_new = fopen(CONFIG . "~",'w+');
-        if($ini_handler){
+        if($ini_handler and $ini_handler_new){
             while(($line = fgets($ini_handler))){
                 if(substr($line,0,14) === "incident_index"){
                     fwrite($ini_handler_new,"incident_index=".$latest_id."\n");
@@ -300,6 +291,7 @@ class Obb {
 
     /**
      * Returns the average time of all (recorded) incidents in seconds.
+     * @throws NoResultException if database is empty (database_handler->get_avg_time)
      * @return JSON time in seconds
      */
     public function get_avg_time(){
@@ -309,6 +301,7 @@ class Obb {
 
     /**
      * Returns the domain with the absolute minimum average response time.
+     * @throws NoResultException if database is empty (database_handler->get_best)
      * @return JSON domain data
      */
     public function get_best_domain(){
@@ -318,6 +311,7 @@ class Obb {
 
     /**
      * Returns the domain with the absolute maximum response time. 
+     * @throws NoResultException if database is empty (database_handler->get_worst)
      * @return JSON domain data
      */
     public function get_worst_domain(){
@@ -329,6 +323,7 @@ class Obb {
      * This will return the ranking the given domain in comparison to all others.
      * If the domain has no average time at all (no fixes ever) the result will be 0
      * @param string the domain name
+     * @throws NoResultException if database is empty (database_handler->get_rank)
      * @return JSON (number between 0 and 1)
      */
     public function get_rank($domain){
