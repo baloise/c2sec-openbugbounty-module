@@ -13,7 +13,7 @@ final class ObbTest extends TestCase{
 
     public function setUp(){
         $this->obb = new Obb\Obb();
-        sleep(1);
+        sleep(3);
     }   
 
     public function test_report_success1(){
@@ -45,12 +45,21 @@ final class ObbTest extends TestCase{
         $this->expectException(Obb\NoResultException::class);
         $report = $this->obb->report($domain);
     }
- 
 
-    public function tearDown(){
-
+    public function test_rank(){
+        $domain = "google.com";
+        
+        $rank = $this->obb->get_rank($domain);
+        #delta not supported for gt / lt assertions, so multiplying by 2
+        $this->assertGreaterThanOrEqual(0.0,$rank * 2); 
+        $this->assertLessThanOrEqual(1.0,$rank);
     }
 
+    public function test_rank_failure(){
+        $domain = "abc.abc.123";
+        $this->expectException(Obb\NoResultException::class);
+        $rank = $this->obb->get_rank($domain);
+    }
 }
 
 ?>

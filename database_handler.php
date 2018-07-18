@@ -230,6 +230,9 @@ class DatabaseHandler{
 
         $query = "SELECT AVG(time),host FROM (" . $this->query_timediff . ")incident_time GROUP BY host ORDER BY AVG(time) DESC LIMIT 1";
         $res = $this->conn->query($query);
+        if(NULL == $res or 0 == $res->num_rows){
+            handle_exception(new NoResultException("The database seems to be empty"));
+        }
         $host = $res->fetch_row()[1];
         return $this->get_domain($host);
     }
@@ -245,7 +248,17 @@ class DatabaseHandler{
        
         if(NULL == $domain){
             handle_exception(new NoResultException("No searchterm provided"));
-        } 
+        }
+        
+        $test_stmt = $this->conn->prepare("SELECT id FROM incident WHERE host = ? LIMIT 1");
+        $test_stmt->bind_param("s",$domain);
+        $test_stmt->execute();
+        $test_res = $test_stmt->get_result();
+
+        if(NULL == $test_res or  0 == $test_res->num_rows){
+            handle_exception(new NoResultException("Domain " . $domain . " was not found"));
+        }
+
         $total_number_domains = $this->conn->query("SELECT COUNT(DISTINCT host) FROM incident")->fetch_row()[0];
         if(0 == $total_number_domains or NULL == $total_number_domains){
             handle_exception(new NoResultException("The database seems to be empty"));
