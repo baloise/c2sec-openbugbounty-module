@@ -212,12 +212,17 @@ class Obb {
         $latest_id = $this->get_latest_reportID();
         $incidents = array();
         for(;$counter < $latest_id;$counter++){
-            sleep(1);  #for safety
+            sleep(1);
             $bulk_counter++;
             try{
                 $res = $this->get_response($this->id_url . $counter);
             }catch (NoResultException $e){
                 continue;
+            }catch(ConnectionException $e){
+                syslog(LOG_INFO,"Saving remaining incidents " . $counter); 
+                $this->database_handler->write_bulk($incidents);
+                $this->update_incident_index($counter);
+                throw $e;
             }
             array_push($incidents,$res->children()[0]);
             if($bulk_counter >= BULK_SIZE){

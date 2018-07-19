@@ -51,7 +51,8 @@ The data for these metrics are coming from the database. In order to use them, y
 When populating the database, the process starts to iterate through all incident ids from openbugbounty.   
 The starting index found in `obb.ini` as `incident_index`.  
 Each incident is saved. After every 50 incidents the database will be updated.  
-Everytime the database is updated / populated, the still unfixed  incidents will be checked again.
+Everytime the database is updated / populated, the still unfixed  incidents will be checked again.  
+Incidents with a wrong fixed date are ignored.
 
 ## Dependencies:
 
