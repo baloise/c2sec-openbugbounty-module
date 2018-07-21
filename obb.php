@@ -176,7 +176,7 @@ class Obb {
         }
         $xml = simplexml_load_string($res);
         if(NULL == $xml || 0 == count($xml->children())){
-            handle_exception(new NoResultException("Query " . $url . " gave no result"));
+            handle_exception(new NoResultException("Query " . $url . " returned no result"));
         }
         return $xml;
     }
@@ -210,6 +210,7 @@ class Obb {
 
         $counter = $this->incident_index;
         $latest_id = $this->get_latest_reportID();
+        syslog(LOG_INFO,"Start fetching incidents up to id " . $latest_id);
         $incidents = array();
         for(;$counter < $latest_id;$counter++){
             sleep(1);
@@ -245,6 +246,7 @@ class Obb {
         # update_file is not needed anymore, just query all incidents with fixeddate = NULL
         $unfixed_incidents = $this->database_handler->unfixed_incidents();
         foreach($unfixed_incidents as $incident){
+            syslog(LOG_INFO,"Checking unfixed incident id " . $incident["id"]);
             sleep(1);
             try{
                 $res = $this->get_response($this->id_url . (int)$incident["id"]);
@@ -252,6 +254,7 @@ class Obb {
                 continue; 
             }
             if(1 == $res->children()[0]->fixed){
+                syslog(LOG_INFO,"Updating incident " . $incident["id"]);
                 $this->database_handler->write_database($res); 
             }
         }

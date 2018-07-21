@@ -47,6 +47,7 @@ class DatabaseHandler{
     
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
+        syslog(LOG_INFO,"Opening database connection");
         $this->conn = new \mysqli($server,$user,$pass,$db);
 
         $res = $this->conn->query("CREATE TABLE IF NOT EXISTS incident 
@@ -61,6 +62,7 @@ class DatabaseHandler{
 
 
     public function __destruct(){
+        syslog(LOG_INFO,"Closing database connection");
         $this->conn->close();
     }   
 
