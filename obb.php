@@ -202,8 +202,9 @@ class Obb {
     /**
      * Fetches all new incidents from openbugbounty
      * THIS MIGHT TAKE A LONG TIME AND/OR MAYBE OPENBUGBOUNTY WILL CLOSE THE CONNECTION DUE TO TOO MANY REQUESTS.
+     * @param boolean $update if true, check all unfixed incidents
      */
-    public function fetch_domains(){
+    public function fetch_domains($update = false){
 
         #keeping track of when we need to save the data to the drive
         $bulk_counter = 0;
@@ -235,7 +236,10 @@ class Obb {
             }
         }
         $this->update_incident_index($latest_id);
-        $this->check_unfixed_domains();
+        syslog(LOG_INFO,"Finished fetching all incidents");
+        if($update){
+            $this->check_unfixed_domains();
+        }
     }
 
     /**
@@ -258,6 +262,7 @@ class Obb {
                 $this->database_handler->write_database($res); 
             }
         }
+        syslog(LOG_INFO,"Finished checking unfixed incidents");
     }
 
     /**
