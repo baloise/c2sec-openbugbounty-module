@@ -99,21 +99,31 @@ The report will be saved to the database automatically.
 
 ### Database
 
-To do more than just generating a report, you need to populate a database. To fetch the data from openbugbounty and/or update it use: 
+To do more than just generating a report, you need to populate a database. To fetch the data from openbugbounty use: 
+```
+$obb->fetch_domains();
+```
+To update the database for unfixed incidents, use:
+```
+$obb->check_unfixed_domains();
+```
+To do both steps in one:
+```
+$obb->fetch_domains(update=true);
+```
+
+To get all domain information from the database in form of associative arrays, use:
 ```
 $all_domains = $obb->get_all_domains();
-```
-This will also return an associative array of all domain reports.
-```
 echo $all_domains['google.com']['total'];
 13
 ```
-When running it initially (with incident_index equals 0) it will take a very long time (but the procedure can be discontinued and later called again, since every 50 incidents are stored safely)  
+When running `fetch_domains` initially (with incident_index equals 0) it will take a very long time (but the procedure can be discontinued and later called again, since every 50 incidents are stored safely)  
 For safety reasons only one request per seconds is send.  
 
 Go get only  all currently stored data use:
 ```
-$all_domains = $obb->load_domain_data($fetch = false)
+$all_domains = $obb->get_all_domains($fetch = false)
 ```
 
 To populate the database you can also run `populate_database.php`
